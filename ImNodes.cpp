@@ -28,6 +28,19 @@
 namespace ImNodes
 {
 
+enum _ImNodesState
+{
+    State_None,
+    State_Drag,
+    State_Select,
+};
+
+struct _NodeState
+{
+    bool selected = false;
+    bool selected_prev = false;
+};
+
 struct _DragConnectionPayload
 {
     void* node_id = nullptr;
@@ -44,6 +57,8 @@ struct _SlotState
 struct _CanvasStateImpl
 {
     ImPool<_SlotState> slot_state{};
+    ImPool<_NodeState> node_state{};
+    ImVector<NodeState*> all_nodes{};
     void* current_node_id = nullptr;
     NodeState* current_node_state = nullptr;
     SlotDesc* outputs = nullptr;
@@ -52,6 +67,15 @@ struct _CanvasStateImpl
     int cnum = 0;
     Connection* delete_connection = nullptr;
     Connection drop{};
+    ImVec2 selection_start{};
+    NodeState* drag_node = nullptr;
+    NodeState* single_selected_node = nullptr;
+    _ImNodesState state{};
+
+    _NodeState* GetInternalNodeState(NodeState* node)
+    {
+        return node_state.GetOrAddByKey(ImHash(&node, sizeof(node)));
+    }
 };
 
 CanvasState::CanvasState() noexcept
@@ -323,14 +347,17 @@ void BeginCanvas(CanvasState* canvas)
 
 void EndCanvas()
 {
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    auto* canvas = (CanvasState*)ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
+    auto* impl = canvas->_impl;
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     // Draw pending connection
     if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
     {
         char data_type_fragment[] = "new-node-connection-";
         if (strncmp(payload->DataType, data_type_fragment, sizeof(data_type_fragment) - 1) == 0)
         {
-            auto* canvas = (CanvasState*)ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
-            auto* impl = canvas->_impl;
             auto* drag_data = (_DragConnectionPayload*)payload->Data;
             auto* slot_state = impl->slot_state.GetOrAddByKey(SlotHash(drag_data->slot_type, drag_data->node_id, drag_data->slot_desc));
 
@@ -350,6 +377,60 @@ void EndCanvas()
         }
     }
 
+    switch (impl->state)
+    {
+    case State_None:
+    {
+        if (!ImGui::IsAnyItemActive() && ImGui::IsMouseDown(0))
+        {
+            ImGui::SetActiveID(ImGui::GetID("selection"), ImGui::GetCurrentWindow());
+            impl->selection_start = ImGui::GetMousePos();
+            impl->state = State_Select;
+
+            for (auto* node : impl->all_nodes)
+            {
+                auto* internal_state = impl->GetInternalNodeState(node);
+                internal_state->selected_prev = internal_state->selected;
+            }
+        }
+
+        if (impl->single_selected_node != nullptr)
+        {
+            for (auto* node : impl->all_nodes)
+            {
+                if (node != impl->single_selected_node)
+                    impl->GetInternalNodeState(node)->selected = false;
+            }
+            impl->single_selected_node = nullptr;
+        }
+        break;
+    }
+    case State_Drag:
+    {
+        if (!ImGui::IsMouseDown(0))
+        {
+            impl->state = State_None;
+            impl->drag_node = nullptr;
+        }
+        break;
+    }
+    case State_Select:
+    {
+        if (ImGui::IsMouseDown(0))
+        {
+            draw_list->AddRectFilled(impl->selection_start, ImGui::GetMousePos(), ImColor(style.Colors[ImGuiCol_FrameBg]));
+            draw_list->AddRect(impl->selection_start, ImGui::GetMousePos(), ImColor(style.Colors[ImGuiCol_Border]));
+        }
+        else
+        {
+            ImGui::ClearActiveID();
+            impl->state = State_None;
+        }
+        break;
+    }
+    }
+
+    impl->all_nodes.clear();
     ImGui::SetWindowFontScale(1.f);
     ImGui::PopID();     // canvas
 }
@@ -362,6 +443,7 @@ bool BeginNode(void* id, NodeState& node, SlotDesc* inputs, int inum, SlotDesc* 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = (CanvasState*)storage->GetVoidPtr(ImGui::GetID("canvas-state"));
     auto* impl = canvas->_impl;
+    impl->all_nodes.push_back(&node);
 
     ImGui::PushID(id);
 
@@ -408,8 +490,7 @@ bool BeginNode(void* id, NodeState& node, SlotDesc* inputs, int inum, SlotDesc* 
             auto* input_slot_state = impl->slot_state.GetOrAddByKey(SlotHash(InputSlot, connection->input_node, connection->input_slot));
             auto* output_slot_state = impl->slot_state.GetOrAddByKey(SlotHash(OutputSlot, connection->output_node, connection->output_slot));
 
-            bool curve_hovered = RenderConnection(input_slot_state->pos, output_slot_state->pos,
-                slot_circle_radius);
+            bool curve_hovered = RenderConnection(input_slot_state->pos, output_slot_state->pos, slot_circle_radius);
             if (curve_hovered)
             {
                 if (ImGui::IsMouseDoubleClicked(0))
@@ -457,8 +538,13 @@ void EndNode()
 
     // Render frame
     draw_list->ChannelsSetCurrent(0);
-    draw_list->AddRectFilled(node_rect.Min, node_rect.Max, ImColor(style.Colors[ImGuiCol_FrameBg]), 3);
-    draw_list->AddRect(node_rect.Min, node_rect.Max, ImColor(style.Colors[ImGuiCol_Border]), 3);
+
+    _NodeState* node_internal_state = impl->GetInternalNodeState(impl->current_node_state);
+
+    draw_list->AddRectFilled(node_rect.Min, node_rect.Max, ImColor(
+        node_internal_state->selected ? style.Colors[ImGuiCol_FrameBgActive] : style.Colors[ImGuiCol_FrameBg]
+        ), style.FrameRounding);
+    draw_list->AddRect(node_rect.Min, node_rect.Max, ImColor(style.Colors[ImGuiCol_Border]), style.FrameRounding);
 
     // Create node item
     ImGuiID node_id = ImGui::GetID("node");
@@ -471,9 +557,80 @@ void EndNode()
     else if (!ImGui::IsMouseDown(0) && ImGui::IsItemActive())
         ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
 
-    // Node dragging behavior
-    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0, 0.0f))
-        impl->current_node_state->pos += ImGui::GetIO().MouseDelta / canvas->zoom;
+    ImGuiIO& io = ImGui::GetIO();
+    switch (impl->state)
+    {
+    case State_None:
+    {
+        // Node selection behavior. Selection can change only when no node is being dragged.
+        if (ImGui::IsItemHoveredRect() && ImGui::IsMouseReleased(0))
+        {
+            if (io.KeyCtrl)
+            {
+                node_internal_state->selected ^= true;
+                impl->single_selected_node = nullptr;
+            }
+            else
+            {
+                node_internal_state->selected = true;
+                impl->single_selected_node = impl->current_node_state;
+            }
+        }
+        else if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0))
+        {
+            impl->state = State_Drag;
+            if (impl->drag_node == nullptr)
+                impl->drag_node = impl->current_node_state;
+        }
+
+        break;
+    }
+    case State_Drag:
+    {
+        if (ImGui::IsMouseDown(0))
+        {
+            // Node dragging behavior. Drag node under mouse and other selected nodes if current node is selected.
+            if ((ImGui::IsItemActive() || (impl->drag_node &&
+                impl->GetInternalNodeState(impl->drag_node)->selected &&
+                impl->GetInternalNodeState(impl->current_node_state)->selected)))
+                impl->current_node_state->pos += ImGui::GetIO().MouseDelta / canvas->zoom;
+        }
+        break;
+    }
+    case State_Select:
+    {
+        ImRect selection_rect;
+        selection_rect.Min.x = ImMin(impl->selection_start.x, ImGui::GetMousePos().x);
+        selection_rect.Min.y = ImMin(impl->selection_start.y, ImGui::GetMousePos().y);
+        selection_rect.Max.x = ImMax(impl->selection_start.x, ImGui::GetMousePos().x);
+        selection_rect.Max.y = ImMax(impl->selection_start.y, ImGui::GetMousePos().y);
+
+        if (io.KeyShift)
+        {
+            if (!node_internal_state->selected)
+            {
+                if (selection_rect.Contains(node_rect))
+                    node_internal_state->selected = true;
+                else
+                    node_internal_state->selected = node_internal_state->selected_prev;
+            }
+        }
+        else if (io.KeyCtrl)
+        {
+            if (node_internal_state->selected)
+            {
+                if (selection_rect.Contains(node_rect))
+                    node_internal_state->selected = false;
+                else
+                    node_internal_state->selected = node_internal_state->selected_prev;
+            }
+        }
+        else
+            node_internal_state->selected = selection_rect.Contains(node_rect);
+
+        break;
+    }
+    }
 
     draw_list->ChannelsMerge();
 

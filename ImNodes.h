@@ -30,11 +30,12 @@
 //
 // Appearance can be styled by altering imgui style before calls to ImNodes::*,
 // Colors:
-//  * ImGuiCol_PlotLines is used for connector dots and connection lines.
-//  * ImGuiCol_PlotLinesHovered is used for connector dots and connection lines when they are hovered/active.
-//  * ImGuiCol_Border is used for node and connector borders.
-//  * ImGuiCol_FrameBg is used for node background.
-//
+//  * ImGuiCol_PlotLines - for connector dots and connection lines.
+//  * ImGuiCol_PlotLinesHovered - for connector dots and connection lines when they are hovered/active.
+//  * ImGuiCol_Border - for node and connector borders.
+//  * ImGuiCol_FrameBg - for node background.
+//  * ImGuiCol_FrameBgActive - selected node background.
+//  * FrameRounding - node border rounding.
 
 namespace ImNodes
 {

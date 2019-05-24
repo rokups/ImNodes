@@ -160,6 +160,8 @@ void ShowDemoWindow(bool*)
                     nodes.back().state.pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->ParentWindow->Pos - canvas.offset;
                 }
             }
+            if (ImGui::IsAnyMouseDown() && !ImGui::IsMouseHoveringWindow())
+                ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
 
