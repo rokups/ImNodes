@@ -121,7 +121,18 @@ std::vector<MyNode> available_nodes{
 };
 std::vector<MyNode> nodes;
 ImNodes::CanvasState canvas{};
-bool init = false;
+
+void DeleteConnection(ImNodes::Connection* connection, std::vector<ImNodes::Connection>& connections)
+{
+    for (auto it = connections.begin(); it != connections.end(); ++it)
+    {
+        if (*connection == *it)
+        {
+            connections.erase(it);
+            break;
+        }
+    }
+}
 
 void ShowDemoWindow(bool*)
 {
@@ -129,8 +140,9 @@ void ShowDemoWindow(bool*)
     {
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::BeginCanvas(&canvas);
-        for (auto& node : nodes)
+        for (auto it = nodes.begin(); it != nodes.end();)
         {
+            MyNode& node = *it;
             if (ImNodes::BeginNode(&node,
                 &node.inputs[0], node.inputs.size(),
                 &node.outputs[0], node.outputs.size(),
@@ -150,23 +162,24 @@ void ShowDemoWindow(bool*)
                 // Remove deleted connections
                 if (ImNodes::Connection* connection = ImNodes::GetDeleteConnection())
                 {
-                    auto delete_connection = [](ImNodes::Connection* connection, std::vector<ImNodes::Connection>& connections)
-                    {
-                        for (auto it = connections.begin(); it != connections.end(); ++it)
-                        {
-                            if (*connection == *it)
-                            {
-                                connections.erase(it);
-                                break;
-                            }
-                        }
-                    };
-                    delete_connection(connection, ((MyNode*) connection->input_node)->connections);
-                    delete_connection(connection, ((MyNode*) connection->output_node)->connections);
+                    DeleteConnection(connection, ((MyNode*) connection->input_node)->connections);
+                    DeleteConnection(connection, ((MyNode*) connection->output_node)->connections);
                 }
 
                 ImNodes::EndNode();
             }
+
+            if (node.selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
+            {
+                for (auto& connection : node.connections)
+                {
+                    DeleteConnection(&connection, ((MyNode*) connection.input_node)->connections);
+                    DeleteConnection(&connection, ((MyNode*) connection.output_node)->connections);
+                }
+                it = nodes.erase(it);
+            }
+            else
+                ++it;
         }
 
         const ImGuiIO& io = ImGui::GetIO();
