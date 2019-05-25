@@ -25,6 +25,30 @@
 #endif
 #include "ImNodes.h"
 
+namespace ImGui
+{
+
+void PopID(int n)
+{
+    while (n-- > 0)
+        ImGui::PopID();
+}
+
+template<typename T>
+void PushIDs(T value)
+{
+    PushID(value);
+}
+
+template<typename T, typename... Args>
+void PushIDs(T value, Args... args)
+{
+    PushID(value);
+    PushIDs(args...);
+}
+
+}
+
 namespace ImNodes
 {
 
@@ -41,18 +65,6 @@ enum _ImNodesState
     State_Select,
 };
 
-struct _NodeState
-{
-    bool selected = false;
-    bool selected_prev = false;
-};
-
-struct _SlotState
-{
-    ImVec2 pos{};
-    bool curve_hovered = false;
-};
-
 struct _DragConnectionPayload
 {
     NodeInfo* node = nullptr;
@@ -62,8 +74,6 @@ struct _DragConnectionPayload
 
 struct _CanvasStateImpl
 {
-    ImPool<_SlotState> slot_state{};
-    ImPool<_NodeState> node_state{};
     ImVector<NodeInfo*> all_nodes{};
     NodeInfo* current_node = nullptr;
     SlotInfo* outputs = nullptr;
@@ -77,11 +87,6 @@ struct _CanvasStateImpl
     NodeInfo* single_selected_node = nullptr;
     _ImNodesState state{};
     int last_connected_frame = 0;
-
-    _NodeState* GetInternalNodeState(const NodeInfo* node)
-    {
-        return node_state.GetOrAddByKey(ImHash(&node, sizeof(node)));
-    }
 };
 
 CanvasState::CanvasState() noexcept
@@ -92,11 +97,6 @@ CanvasState::CanvasState() noexcept
 CanvasState::~CanvasState()
 {
     delete _impl;
-}
-
-ImU32 SlotHash(SlotType type, NodeInfo* node, SlotInfo* slot)
-{
-    return ImHash(&slot, sizeof(slot), ImHash(&type, sizeof(type), ImHash(&node, sizeof(node))));
 }
 
 // Based on http://paulbourke.net/geometry/pointlineplane/
@@ -152,6 +152,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
     const ImGuiStyle& style = ImGui::GetStyle();
     auto* canvas = (CanvasState*) ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
     auto* impl = canvas->_impl;
+    auto* storage = ImGui::GetStateStorage();
 
     ImGui::PushID(type);
     ImGui::BeginGroup();
@@ -168,7 +169,6 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
     for (int i = 0; i < snum; i++)
     {
         SlotInfo* current_slot = &slots[i];
-        auto* slot_state = impl->slot_state.GetOrAddByKey(SlotHash(type, impl->current_node, current_slot));
         ImGui::PushID(current_slot);
         if (type == OutputSlot)
         {
@@ -191,7 +191,9 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
                 ImGui::GetCursorScreenPos() + ImVec2{circle_radius * 3, circle_radius * 2}};
         }
 
-        slot_state->pos = circle_rect.GetCenter();
+        ImVec2 slot_center = circle_rect.GetCenter();
+        storage->SetFloat(ImGui::GetID("x"), slot_center.x);
+        storage->SetFloat(ImGui::GetID("y"), slot_center.y);
 
         ImGuiID slot_id = ImGui::GetID(current_slot->title);
         ImGui::ItemSize(circle_rect.GetSize());
@@ -206,9 +208,10 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         if (ImGui::IsItemActive() && !ImGui::IsMouseDown(0))
             ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
 
+        ImU32 curve_hovered_id = ImGui::GetID("curve-hovered");
         bool is_connected = false;
         bool is_active = ImGui::IsItemActive();
-        bool is_hovered = slot_state->curve_hovered || (!ImGui::IsMouseDown(0) && ImGui::IsItemHoveredRect());
+        bool is_hovered = storage->GetBool(curve_hovered_id) || (!ImGui::IsMouseDown(0) && ImGui::IsItemHoveredRect());
 
         for (int j = 0; !is_connected && j < impl->cnum; j++)
         {
@@ -294,7 +297,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
 
         if (is_active || is_hovered || is_connected)
         {
-            slot_state->curve_hovered = false;    // Will be set on next frame if it is hovered
+            storage->SetBool(curve_hovered_id, false); // Will be set on next frame if it is hovered
             draw_list->AddCircleFilled(circle_rect.GetCenter(), circle_radius,
                 ImColor(is_hovered ? style.Colors[ImGuiCol_PlotLinesHovered] : style.Colors[ImGuiCol_PlotLines]));
         }
@@ -322,7 +325,7 @@ void BeginCanvas(CanvasState* canvas)
 {
     assert(canvas != nullptr);
     const ImGuiWindow* w = ImGui::GetCurrentWindow();
-    ImGui::PushID(&canvas);
+    ImGui::PushID(canvas);
 
     ImGui::ItemAdd(w->ContentsRegionRect, ImGui::GetID("canvas"));
 
@@ -375,6 +378,7 @@ void EndCanvas()
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = (CanvasState*)ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
     auto* impl = canvas->_impl;
+    auto* storage = ImGui::GetStateStorage();
     const ImGuiStyle& style = ImGui::GetStyle();
 
     // Draw pending connection
@@ -384,18 +388,24 @@ void EndCanvas()
         if (strncmp(payload->DataType, data_type_fragment, sizeof(data_type_fragment) - 1) == 0)
         {
             auto* drag_data = (_DragConnectionPayload*)payload->Data;
-            auto* slot_state = impl->slot_state.GetOrAddByKey(SlotHash(drag_data->slot_type, drag_data->node, drag_data->slot));
+
+            ImGui::PushIDs(drag_data->node, drag_data->slot_type, drag_data->slot);
+            ImVec2 input_slot_pos{
+                storage->GetFloat(ImGui::GetID("x")),
+                storage->GetFloat(ImGui::GetID("y"))
+            };
+            ImGui::PopID(3);
 
             ImVec2 input_pos, output_pos;
             if (drag_data->slot_type == InputSlot)
             {
-                input_pos = slot_state->pos;
+                input_pos = input_slot_pos;
                 output_pos = ImGui::GetMousePos();
             }
             else
             {
                 input_pos = ImGui::GetMousePos();
-                output_pos = slot_state->pos;
+                output_pos = input_slot_pos;
             }
 
             RenderConnection(input_pos, output_pos, slot_circle_radius);
@@ -423,10 +433,12 @@ void EndCanvas()
                 impl->selection_start = ImGui::GetMousePos();
                 impl->state = State_Select;
 
+                auto* storage = ImGui::GetStateStorage();
                 for (auto* node : impl->all_nodes)
                 {
-                    auto* internal_state = impl->GetInternalNodeState(node);
-                    internal_state->selected_prev = internal_state->selected;
+                    ImGui::PushID(node);
+                    storage->SetBool(ImGui::GetID("prev-selected"), node->selected);
+                    ImGui::PopID();     // node
                 }
             }
         }
@@ -439,7 +451,7 @@ void EndCanvas()
             for (auto* node : impl->all_nodes)
             {
                 if (node != impl->single_selected_node)
-                    impl->GetInternalNodeState(node)->selected = false;
+                    node->selected = false;
             }
             impl->single_selected_node = nullptr;
         }
@@ -485,20 +497,15 @@ bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, in
     auto* impl = canvas->_impl;
     impl->all_nodes.push_back(node);
 
-    ImGui::PushID(node);
-
-    // 0 - node rect, curves
-    // 1 - node content
-    draw_list->ChannelsSplit(2);
-
-    // Store canvas state in scope of the node. It is used by slot rendering.
-    storage->SetVoidPtr(ImGui::GetID("canvas-state"), canvas);
-
     impl->current_node = node;
     impl->outputs = outputs;
     impl->onum = onum;
     impl->connections = connections;
     impl->cnum = cnum;
+
+    // 0 - node rect, curves
+    // 1 - node content
+    draw_list->ChannelsSplit(2);
 
     if (node->pos == node_offscreen_position)
     {
@@ -511,20 +518,6 @@ bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, in
     {
         // Top-let corner of the node
         ImGui::SetCursorScreenPos(ImGui::GetWindowPos() + node->pos * canvas->zoom + canvas->offset);
-    }
-
-    ImGui::BeginGroup();    // Slots and content group
-    ImGui::NewLine();       // Leave a spare line for node title
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style.ItemSpacing.y);
-
-    // Render input slots
-    draw_list->ChannelsSetCurrent(1);
-    {
-        SlotsInternal(InputSlot, inputs, inum);
-        ImRect rect{ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
-        // Go to position for rendering custom node widgets
-        ImGui::SetCursorScreenPos(rect.Min + ImVec2{rect.GetWidth() + style.ItemSpacing.x * 2 * canvas->zoom, 0});
-        ImGui::BeginGroup();    // Content group
     }
 
     // Render connections
@@ -540,22 +533,52 @@ bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, in
                 // Do not render connection to newly added output node because node is rendered outside of screen on the first frame and will be repositioned.
                 continue;
 
-            auto* input_slot_state = impl->slot_state.GetOrAddByKey(SlotHash(InputSlot, connection->input_node, connection->input_slot));
-            auto* output_slot_state = impl->slot_state.GetOrAddByKey(SlotHash(OutputSlot, connection->output_node, connection->output_slot));
+            // /!\ This code depends on ID stack structure!
+            ImGui::PushIDs(connection->input_node, InputSlot, connection->input_slot);
+            ImU32 input_slot_curve_hovered_id = ImGui::GetID("curve-hovered");
+            ImVec2 input_slot_pos{
+                storage->GetFloat(ImGui::GetID("x")),
+                storage->GetFloat(ImGui::GetID("y"))
+            };
+            ImGui::PopID(3);
 
-            bool curve_hovered = RenderConnection(input_slot_state->pos, output_slot_state->pos, slot_circle_radius);
+            ImGui::PushIDs(connection->output_node, OutputSlot, connection->output_slot);
+            ImU32 output_slot_curve_hovered_id = ImGui::GetID("curve-hovered");
+            ImVec2 output_slot_pos{
+                storage->GetFloat(ImGui::GetID("x")),
+                storage->GetFloat(ImGui::GetID("y"))
+            };
+            ImGui::PopID(3);
+
+            bool curve_hovered = RenderConnection(input_slot_pos, output_slot_pos, slot_circle_radius);
             if (curve_hovered)
             {
                 if (ImGui::IsMouseDoubleClicked(0))
                     impl->delete_connection = connection;
             }
 
-            impl->slot_state.GetOrAddByKey(
-                SlotHash(InputSlot, connection->input_node, connection->input_slot))->curve_hovered = curve_hovered;
-
-            impl->slot_state.GetOrAddByKey(
-                SlotHash(OutputSlot, connection->output_node, connection->output_slot))->curve_hovered = curve_hovered;
+            storage->SetBool(input_slot_curve_hovered_id, curve_hovered);
+            storage->SetBool(output_slot_curve_hovered_id, curve_hovered);
         }
+    }
+
+    ImGui::PushID(node);
+
+    // Store canvas state in scope of the node. It is used by slot rendering.
+    storage->SetVoidPtr(ImGui::GetID("canvas-state"), canvas);
+
+    ImGui::BeginGroup();    // Slots and content group
+    ImGui::NewLine();       // Leave a spare line for node title
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style.ItemSpacing.y);
+
+    // Render input slots
+    draw_list->ChannelsSetCurrent(1);
+    {
+        SlotsInternal(InputSlot, inputs, inum);
+        ImRect rect{ImGui::GetItemRectMin(), ImGui::GetItemRectMax()};
+        // Go to position for rendering custom node widgets
+        ImGui::SetCursorScreenPos(rect.Min + ImVec2{rect.GetWidth() + style.ItemSpacing.x * 2 * canvas->zoom, 0});
+        ImGui::BeginGroup();    // Content group
     }
 
     draw_list->ChannelsSetCurrent(1);
@@ -569,6 +592,7 @@ void EndNode()
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = (CanvasState*)ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
     auto* impl = canvas->_impl;
+    auto* node = impl->current_node;
 
     // Render output slots
     {
@@ -585,18 +609,15 @@ void EndNode()
 
     // Render title
     draw_list->ChannelsSetCurrent(1);
-    float title_width = ImGui::CalcTextSize(impl->current_node->title).x;
+    float title_width = ImGui::CalcTextSize(node->title).x;
     ImGui::SetCursorScreenPos(node_rect.Min + ImVec2{node_rect.GetWidth() / 2 - title_width / 2, style.ItemSpacing.y});
-    ImGui::TextUnformatted(impl->current_node->title);
+    ImGui::TextUnformatted(node->title);
 
     // Render frame
     draw_list->ChannelsSetCurrent(0);
 
-    _NodeState* node_internal_state = impl->GetInternalNodeState(impl->current_node);
-
-    draw_list->AddRectFilled(node_rect.Min, node_rect.Max, ImColor(
-        node_internal_state->selected ? style.Colors[ImGuiCol_FrameBgActive] : style.Colors[ImGuiCol_FrameBg]
-        ), style.FrameRounding);
+    ImColor node_color(style.Colors[node->selected ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg]);
+    draw_list->AddRectFilled(node_rect.Min, node_rect.Max, node_color, style.FrameRounding);
     draw_list->AddRect(node_rect.Min, node_rect.Max, ImColor(style.Colors[ImGuiCol_Border]), style.FrameRounding);
 
     // Create node item
@@ -622,23 +643,23 @@ void EndNode()
         }
         else if (ImGui::IsItemHoveredRect() && ImGui::IsMouseReleased(0))
         {
-            node_internal_state->selected ^= true;
+            node->selected ^= true;
             if (!io.KeyCtrl)
-                impl->single_selected_node = impl->current_node;
+                impl->single_selected_node = node;
         }
         else if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0))
         {
             impl->state = State_Drag;
             if (impl->drag_node == nullptr)
-                impl->drag_node = impl->current_node;
+                impl->drag_node = node;
             else
                 impl->single_selected_node = nullptr;
         }
-        else if (impl->current_node->pos == node_offscreen_position)
+        else if (node->pos == node_offscreen_position)
         {
             // Upon node creation we would like it to be positioned at the center of mouse cursor. This can be done only
             // once widget dimensions are known at the end of rendering and thus on the next frame.
-            impl->current_node->pos =
+            node->pos =
                 ImGui::GetMousePos() - ImGui::GetCurrentWindow()->Pos - canvas->offset - (node_rect.GetSize() / 2);
         }
 
@@ -649,9 +670,8 @@ void EndNode()
         if (ImGui::IsMouseDown(0))
         {
             // Node dragging behavior. Drag node under mouse and other selected nodes if current node is selected.
-            if ((ImGui::IsItemActive() || (impl->drag_node && impl->GetInternalNodeState(impl->drag_node)->selected &&
-                impl->GetInternalNodeState(impl->current_node)->selected)))
-                impl->current_node->pos += ImGui::GetIO().MouseDelta / canvas->zoom;
+            if ((ImGui::IsItemActive() || (impl->drag_node && impl->drag_node->selected && node->selected)))
+                node->pos += ImGui::GetIO().MouseDelta / canvas->zoom;
         }
         break;
     }
@@ -667,22 +687,22 @@ void EndNode()
         {
             // Append selection
             if (selection_rect.Contains(node_rect))
-                node_internal_state->selected = true;
+                node->selected = true;
             else
-                node_internal_state->selected = node_internal_state->selected_prev;
+                node->selected = ImGui::GetStateStorage()->GetBool(ImGui::GetID("prev-selected"));
         }
         else if (io.KeyCtrl)
         {
             // Subtract from selection
             if (selection_rect.Contains(node_rect))
-                node_internal_state->selected = false;
+                node->selected = false;
             else
-                node_internal_state->selected = node_internal_state->selected_prev;
+                node->selected = ImGui::GetStateStorage()->GetBool(ImGui::GetID("prev-selected"));
         }
         else
         {
             // Assign selection
-            node_internal_state->selected = selection_rect.Contains(node_rect);
+            node->selected = selection_rect.Contains(node_rect);
         }
         break;
     }

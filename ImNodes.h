@@ -71,6 +71,8 @@ struct NodeInfo
     const char* title = nullptr;
     /// Node position on canvas.
     ImVec2 pos = node_offscreen_position;
+    /// Set to `true` when current node is selected.
+    bool selected = false;
 
     NodeInfo() = default;
     NodeInfo(const NodeInfo& other) = default;
