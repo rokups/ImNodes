@@ -35,12 +35,14 @@
 //  * ImGuiCol_Border - for node and connector borders.
 //  * ImGuiCol_FrameBg - for node background.
 //  * ImGuiCol_FrameBgActive - selected node background.
+//  * ImGuiCol_Separator - color of grid lines.
 //  * FrameRounding - node border rounding.
 
 namespace ImNodes
 {
 
 static const float slot_circle_radius = 5.f;
+static const ImVec2 node_offscreen_position{-999999.f, -999999.f};
 
 enum SlotType : unsigned
 {
@@ -63,15 +65,18 @@ struct CanvasState
     ~CanvasState();
 };
 
-struct NodeState
+struct NodeInfo
 {
     /// Title that will be rendered at the top of node.
     const char* title = nullptr;
     /// Node position on canvas.
-    ImVec2 pos{};
+    ImVec2 pos = node_offscreen_position;
+
+    NodeInfo() = default;
+    NodeInfo(const NodeInfo& other) = default;
 };
 
-struct SlotDesc
+struct SlotInfo
 {
     /// Title that will be rendered next to slot connector.
     const char* title = nullptr;
@@ -82,13 +87,13 @@ struct SlotDesc
 struct Connection
 {
     /// `id` that was passed to BeginNode() of input node.
-    void* input_node = nullptr;
+    NodeInfo* input_node = nullptr;
     /// Descriptor of input slot.
-    SlotDesc* input_slot = nullptr;
+    SlotInfo* input_slot = nullptr;
     /// `id` that was passed to BeginNode() of output node.
-    void* output_node = nullptr;
+    NodeInfo* output_node = nullptr;
     /// Descriptor of output slot.
-    SlotDesc* output_slot = nullptr;
+    SlotInfo* output_slot = nullptr;
 
     bool operator ==(const Connection& other) const;
     bool operator != (const Connection& other) const;
@@ -99,7 +104,6 @@ void BeginCanvas(CanvasState* canvas);
 /// Terminate a node graph canvas that was created by calling BeginCanvas().
 void EndCanvas();
 /// Begin rendering of node in a graph. Render custom node widgets and handle connections when this function returns `true`.
-/// \param id is a user-provided value to uniquely identify current node.
 /// \param node is a state that should be preserved across sessions.
 /// \param inputs is an array of slot descriptors for inputs (left side).
 /// \param inum is a number of descriptors in `inputs` array.
@@ -107,7 +111,7 @@ void EndCanvas();
 /// \param onum is a number of descriptors in `outputs` array.
 /// \param connections is an array of current active connections.
 /// \param cnum is a number of connections in `connections` array.
-bool BeginNode(void* id, NodeState& node, SlotDesc* inputs, int inum, SlotDesc* outputs, int onum, Connection* connections, int cnum);
+bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, int onum, Connection* connections, int cnum);
 /// Terminates current node. Should only be called when BeginNode() returns `true`.
 void EndNode();
 /// Returns `true` when new connection is made. Connection information is returned into `connection` parameter. Must be

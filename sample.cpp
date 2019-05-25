@@ -31,70 +31,93 @@
 namespace ImGui
 {
 
-
-struct MyNode
+struct MyNode : ImNodes::NodeInfo
 {
-    ImNodes::NodeState state;
-    std::vector<ImNodes::SlotDesc> inputs;
-    std::vector<ImNodes::SlotDesc> outputs;
+    explicit MyNode(const char* title, const std::vector<ImNodes::SlotInfo>& inputs, const std::vector<ImNodes::SlotInfo>& outputs)
+    {
+        this->title = title;
+        this->inputs = inputs;
+        this->outputs = outputs;
+    }
+
+    MyNode(const MyNode& other)
+        : ImNodes::NodeInfo(other)
+    {
+        // Moves internal node state
+        // ImNodes::CopyConstructed(&canvas, &other, this);
+
+        inputs = other.inputs;
+        outputs = other.outputs;
+        connections = other.connections;
+
+        // Connections point to old node. Loop and swap pointers to new node.
+        for (auto& connection : connections)
+        {
+            if (connection.input_node == &other)
+            {
+                connection.input_node = this;
+                for (auto& other_conn : ((MyNode*)connection.output_node)->connections)
+                {
+                    if (other_conn.output_node == &other)
+                    {
+                        other_conn.output_node = this;
+                        break;
+                    }
+                }
+            }
+            else if (connection.output_node == &other)
+            {
+                connection.output_node = this;
+                for (auto& other_conn : ((MyNode*)connection.input_node)->connections)
+                {
+                    if (other_conn.input_node == &other)
+                    {
+                        other_conn.input_node = this;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    std::vector<ImNodes::SlotInfo> inputs;
+    std::vector<ImNodes::SlotInfo> outputs;
     std::vector<ImNodes::Connection> connections;
 };
 
 std::vector<MyNode> available_nodes{
+    MyNode("Node 0",
     {
-        // State
-        {
-            "Node 0",
-            {20, 20}
-        },
         // Inputs
         {
-            // Input
-            {
-                "Input 0",
-                0
-            },
-            {
-                "Input longer",
-                0
-            }
+            "Input 0",
         },
-        // Outputs
         {
-            // Output
-            {
-                "Output 0",
-                0
-            },
-            {
-                "Output longer",
-                0
-            }
+            "Input longer",
         }
     },
     {
-        // State
-        {
-            "Node 1",
-            {0, 0}
-        },
-        // Inputs
-        {
-            // Input
-            {
-                "Input 0",
-                0
-            }
-        },
         // Outputs
         {
-            // Output
-            {
-                "Output longer",
-                0
-            }
+            "Output 0",
+        },
+        {
+            "Output longer",
         }
-    }
+    }),
+    MyNode("Node 1",
+    {
+        // Inputs
+        {
+            "Input 0",
+        }
+    },
+    {
+        // Outputs
+        {
+            "Output longer",
+        }
+    })
 };
 std::vector<MyNode> nodes;
 ImNodes::CanvasState canvas{};
@@ -108,7 +131,7 @@ void ShowDemoWindow(bool*)
         ImNodes::BeginCanvas(&canvas);
         for (auto& node : nodes)
         {
-            if (ImNodes::BeginNode(&node, node.state,
+            if (ImNodes::BeginNode(&node,
                 &node.inputs[0], node.inputs.size(),
                 &node.outputs[0], node.outputs.size(),
                 &node.connections[0], node.connections.size()))
@@ -147,18 +170,15 @@ void ShowDemoWindow(bool*)
         }
 
         const ImGuiIO& io = ImGui::GetIO();
-        if (ImGui::IsMouseReleased(1) && io.MouseDragMaxDistanceSqr[1] < (io.MouseDragThreshold * io.MouseDragThreshold))
+        if (ImGui::IsMouseReleased(1) && ImGui::IsMouseHoveringWindow() && !ImGui::IsMouseDragging(1))
             ImGui::OpenPopup("NodesContextMenu");
 
         if (ImGui::BeginPopup("NodesContextMenu"))
         {
             for (const auto& node_template : available_nodes)
             {
-                if (ImGui::MenuItem(node_template.state.title))
-                {
+                if (ImGui::MenuItem(node_template.title))
                     nodes.emplace_back(node_template);
-                    nodes.back().state.pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->ParentWindow->Pos - canvas.offset;
-                }
             }
             if (ImGui::IsAnyMouseDown() && !ImGui::IsMouseHoveringWindow())
                 ImGui::CloseCurrentPopup();
