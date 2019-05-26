@@ -25,8 +25,10 @@
 #endif
 #include "ImNodes.h"
 
-namespace ImGui
+namespace ImNodes
 {
+
+static const float SLOT_CIRCLE_RADIUS = 5.f;
 
 void PopID(int n)
 {
@@ -37,20 +39,15 @@ void PopID(int n)
 template<typename T>
 void PushIDs(T value)
 {
-    PushID(value);
+    ImGui::PushID(value);
 }
 
 template<typename T, typename... Args>
 void PushIDs(T value, Args... args)
 {
-    PushID(value);
+    ImGui::PushID(value);
     PushIDs(args...);
 }
-
-}
-
-namespace ImNodes
-{
 
 bool operator ==(const ImVec2& a, const ImVec2& b)
 {
@@ -178,7 +175,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
             ImGui::SameLine(0, 0);
         }
 
-        const float circle_radius = slot_circle_radius * canvas->zoom;
+        const float circle_radius = SLOT_CIRCLE_RADIUS * canvas->zoom;
         ImRect circle_rect;
         if (type == InputSlot)
         {
@@ -389,12 +386,12 @@ void EndCanvas()
         {
             auto* drag_data = (_DragConnectionPayload*)payload->Data;
 
-            ImGui::PushIDs(drag_data->node, drag_data->slot_type, drag_data->slot);
+            PushIDs(drag_data->node, drag_data->slot_type, drag_data->slot);
             ImVec2 input_slot_pos{
                 storage->GetFloat(ImGui::GetID("x")),
                 storage->GetFloat(ImGui::GetID("y"))
             };
-            ImGui::PopID(3);
+            PopID(3);
 
             ImVec2 input_pos, output_pos;
             if (drag_data->slot_type == InputSlot)
@@ -408,7 +405,7 @@ void EndCanvas()
                 output_pos = input_slot_pos;
             }
 
-            RenderConnection(input_pos, output_pos, slot_circle_radius);
+            RenderConnection(input_pos, output_pos, SLOT_CIRCLE_RADIUS);
         }
     }
 
@@ -513,7 +510,7 @@ bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, in
     // 1 - node content
     draw_list->ChannelsSplit(2);
 
-    if (node->pos == node_offscreen_position)
+    if (node->pos == NODE_OFFSCREEN_POSITION)
     {
         // Somewhere out of view so that we dont see node flicker when it will be repositioned
         ImGui::SetCursorScreenPos(ImGui::GetWindowPos() + ImGui::GetWindowSize() + style.WindowPadding);
@@ -535,28 +532,28 @@ bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, in
         // input and output nodes have same connection in their lists.
         if (connection->input_node == node)
         {
-            if (connection->output_node->pos == node_offscreen_position)
+            if (connection->output_node->pos == NODE_OFFSCREEN_POSITION)
                 // Do not render connection to newly added output node because node is rendered outside of screen on the first frame and will be repositioned.
                 continue;
 
             // /!\ This code depends on ID stack structure!
-            ImGui::PushIDs(connection->input_node, InputSlot, connection->input_slot);
+            PushIDs(connection->input_node, InputSlot, connection->input_slot);
             ImU32 input_slot_curve_hovered_id = ImGui::GetID("curve-hovered");
             ImVec2 input_slot_pos{
                 storage->GetFloat(ImGui::GetID("x")),
                 storage->GetFloat(ImGui::GetID("y"))
             };
-            ImGui::PopID(3);
+            PopID(3);
 
-            ImGui::PushIDs(connection->output_node, OutputSlot, connection->output_slot);
+            PushIDs(connection->output_node, OutputSlot, connection->output_slot);
             ImU32 output_slot_curve_hovered_id = ImGui::GetID("curve-hovered");
             ImVec2 output_slot_pos{
                 storage->GetFloat(ImGui::GetID("x")),
                 storage->GetFloat(ImGui::GetID("y"))
             };
-            ImGui::PopID(3);
+            PopID(3);
 
-            bool curve_hovered = RenderConnection(input_slot_pos, output_slot_pos, slot_circle_radius);
+            bool curve_hovered = RenderConnection(input_slot_pos, output_slot_pos, SLOT_CIRCLE_RADIUS);
             if (curve_hovered)
             {
                 if (ImGui::IsMouseDoubleClicked(0))
@@ -661,7 +658,7 @@ void EndNode()
             else
                 impl->single_selected_node = nullptr;
         }
-        else if (node->pos == node_offscreen_position)
+        else if (node->pos == NODE_OFFSCREEN_POSITION)
         {
             // Upon node creation we would like it to be positioned at the center of mouse cursor. This can be done only
             // once widget dimensions are known at the end of rendering and thus on the next frame.

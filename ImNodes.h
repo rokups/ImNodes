@@ -41,8 +41,8 @@
 namespace ImNodes
 {
 
-static const float slot_circle_radius = 5.f;
-static const ImVec2 node_offscreen_position{-999999.f, -999999.f};
+/// Initial position of every node. Node placed here will be automatically moved to the mouse cursor.
+static const ImVec2 NODE_OFFSCREEN_POSITION{-999999.f, -999999.f};
 
 enum SlotType : unsigned
 {
@@ -52,7 +52,7 @@ enum SlotType : unsigned
 
 struct _CanvasStateImpl;
 
-struct CanvasState
+struct IMGUI_API CanvasState
 {
     /// Current zoom of canvas.
     float zoom = 1.0;
@@ -65,12 +65,13 @@ struct CanvasState
     ~CanvasState();
 };
 
-struct NodeInfo
+/// Each node must have a unique NodeInfo struct.
+struct IMGUI_API NodeInfo
 {
     /// Title that will be rendered at the top of node.
     const char* title = nullptr;
     /// Node position on canvas.
-    ImVec2 pos = node_offscreen_position;
+    ImVec2 pos = NODE_OFFSCREEN_POSITION;
     /// Set to `true` when current node is selected.
     bool selected = false;
 
@@ -78,7 +79,8 @@ struct NodeInfo
     NodeInfo(const NodeInfo& other) = default;
 };
 
-struct SlotInfo
+/// SlotInfo struct may be shared between different nodes.
+struct IMGUI_API SlotInfo
 {
     /// Title that will be rendered next to slot connector.
     const char* title = nullptr;
@@ -86,7 +88,7 @@ struct SlotInfo
     int kind = 0;
 };
 
-struct Connection
+struct IMGUI_API Connection
 {
     /// `id` that was passed to BeginNode() of input node.
     NodeInfo* input_node = nullptr;
@@ -102,9 +104,9 @@ struct Connection
 };
 
 /// Create a node graph canvas in current window.
-void BeginCanvas(CanvasState* canvas);
+IMGUI_API void BeginCanvas(CanvasState* canvas);
 /// Terminate a node graph canvas that was created by calling BeginCanvas().
-void EndCanvas();
+IMGUI_API void EndCanvas();
 /// Begin rendering of node in a graph. Render custom node widgets and handle connections when this function returns `true`.
 /// \param node is a state that should be preserved across sessions.
 /// \param inputs is an array of slot descriptors for inputs (left side).
@@ -113,14 +115,14 @@ void EndCanvas();
 /// \param onum is a number of descriptors in `outputs` array.
 /// \param connections is an array of current active connections.
 /// \param cnum is a number of connections in `connections` array.
-bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, int onum, Connection* connections, int cnum);
+IMGUI_API bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, int onum, Connection* connections, int cnum);
 /// Terminates current node. Should only be called when BeginNode() returns `true`.
-void EndNode();
+IMGUI_API void EndNode();
 /// Returns `true` when new connection is made. Connection information is returned into `connection` parameter. Must be
 /// called at id scope created by BeginNode().
-bool GetNewConnection(Connection* connection);
+IMGUI_API bool GetNewConnection(Connection* connection);
 /// Returns a connection from `connections` array passed to BeginNode() when that connection is deleted. Must be called
 /// at id scope created by BeginNode().
-Connection* GetDeleteConnection();
+IMGUI_API Connection* GetDeleteConnection();
 
 }   // namespace ImNodes
