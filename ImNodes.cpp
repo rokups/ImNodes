@@ -206,7 +206,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         }
 
         if (ImGui::IsItemActive() && !ImGui::IsMouseDown(0))
-            ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+            ImGui::ClearActiveID();
 
         ImU32 curve_hovered_id = ImGui::GetID("curve-hovered");
         bool is_connected = false;
@@ -420,14 +420,20 @@ void EndCanvas()
         ImGuiID canvas_id = ImGui::GetID("canvas");
         if (ImGui::IsMouseDown(0) && ImGui::GetCurrentWindow()->ContentsRegionRect.Contains(ImGui::GetMousePos()))
         {
-            if (!ImGui::IsAnyItemActive() && ImGui::IsWindowHovered())
+            if (ImGui::IsWindowHovered())
             {
-                ImGui::SetActiveID(canvas_id, ImGui::GetCurrentWindow());
-                const ImGuiIO& io = ImGui::GetIO();
-                if (!io.KeyCtrl && !io.KeyShift)
-                    unselect_all = true;
-            }
+                if (!ImGui::IsWindowFocused())
+                    ImGui::FocusWindow(ImGui::GetCurrentWindow());
 
+                if (!ImGui::IsAnyItemActive())
+                {
+                    ImGui::SetActiveID(canvas_id, ImGui::GetCurrentWindow());
+                    const ImGuiIO& io = ImGui::GetIO();
+                    if (!io.KeyCtrl && !io.KeyShift)
+                        unselect_all = true;
+                }
+            }
+            
             if (ImGui::GetActiveID() == canvas_id && ImGui::IsMouseDragging(0))
             {
                 impl->selection_start = ImGui::GetMousePos();
@@ -443,7 +449,7 @@ void EndCanvas()
             }
         }
         else if (ImGui::GetActiveID() == canvas_id)
-            ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+            ImGui::ClearActiveID();
 
         // Unselect other nodes when some node was left-clicked.
         if (impl->single_selected_node != nullptr || unselect_all)
@@ -475,7 +481,7 @@ void EndCanvas()
         }
         else
         {
-            ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+            ImGui::ClearActiveID();
             impl->state = State_None;
         }
         break;
@@ -629,7 +635,7 @@ void EndNode()
     if (!ImGui::IsAnyItemActive() && ImGui::IsMouseHoveringRect(node_rect.Min, node_rect.Max) && ImGui::IsMouseDown(0))
         ImGui::SetActiveID(node_id, ImGui::GetCurrentWindow());
     else if (!ImGui::IsMouseDown(0) && ImGui::IsItemActive())
-        ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+        ImGui::ClearActiveID();
 
     ImGuiIO& io = ImGui::GetIO();
     switch (impl->state)

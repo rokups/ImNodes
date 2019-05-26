@@ -184,7 +184,10 @@ void ShowDemoWindow(bool*)
 
         const ImGuiIO& io = ImGui::GetIO();
         if (ImGui::IsMouseReleased(1) && ImGui::IsMouseHoveringWindow() && !ImGui::IsMouseDragging(1))
+        {
+            ImGui::FocusWindow(ImGui::GetCurrentWindow());
             ImGui::OpenPopup("NodesContextMenu");
+        }
 
         if (ImGui::BeginPopup("NodesContextMenu"))
         {
