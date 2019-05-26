@@ -196,7 +196,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         ImGui::ItemSize(circle_rect.GetSize());
         ImGui::ItemAdd(circle_rect, slot_id);
 
-        if (ImGui::IsItemHoveredRect())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
         {
             if (ImGui::IsMouseClicked(0))
                 ImGui::SetActiveID(slot_id, ImGui::GetCurrentWindow());
@@ -208,7 +208,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         ImU32 curve_hovered_id = ImGui::GetID("curve-hovered");
         bool is_connected = false;
         bool is_active = ImGui::IsItemActive();
-        bool is_hovered = storage->GetBool(curve_hovered_id) || (!ImGui::IsMouseDown(0) && ImGui::IsItemHoveredRect());
+        bool is_hovered = storage->GetBool(curve_hovered_id) || (!ImGui::IsMouseDown(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly));
 
         for (int j = 0; !is_connected && j < impl->cnum; j++)
         {
@@ -644,7 +644,7 @@ void EndNode()
         {
             // No selections are performed when nodes are being connected.
         }
-        else if (ImGui::IsItemHoveredRect() && ImGui::IsMouseReleased(0))
+        else if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly) && ImGui::IsMouseReleased(0))
         {
             node->selected ^= true;
             if (!io.KeyCtrl)
