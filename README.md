@@ -1,6 +1,6 @@
 ImNodes
 =======
 
-A standalone imgui node graph implementation.
+A standalone [Dear ImGui](https://github.com/ocornut/imgui) node graph implementation.
 
-![image](https://user-images.githubusercontent.com/19151258/58322886-fc695b00-7e2a-11e9-8ac2-86302bda0ad8.png)
+![image](https://user-images.githubusercontent.com/19151258/58686598-e78b4b00-8387-11e9-8dd3-2e119cfa325e.png)

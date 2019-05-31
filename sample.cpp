@@ -31,62 +31,27 @@
 namespace ImGui
 {
 
-struct MyNode : ImNodes::NodeInfo
+struct MyNode
 {
+    ImNodes::NodeInfo node_info{};
+
     explicit MyNode(const char* title, const std::vector<ImNodes::SlotInfo>& inputs, const std::vector<ImNodes::SlotInfo>& outputs)
     {
-        this->title = title;
+        node_info.title = title;
+        node_info.userdata = this;
         this->inputs = inputs;
         this->outputs = outputs;
     }
 
-    MyNode(const MyNode& other)
-        : ImNodes::NodeInfo(other)
-    {
-        // Moves internal node state
-        // ImNodes::CopyConstructed(&canvas, &other, this);
-
-        inputs = other.inputs;
-        outputs = other.outputs;
-        connections = other.connections;
-
-        // Connections point to old node. Loop and swap pointers to new node.
-        for (auto& connection : connections)
-        {
-            if (connection.input_node == &other)
-            {
-                connection.input_node = this;
-                for (auto& other_conn : ((MyNode*)connection.output_node)->connections)
-                {
-                    if (other_conn.output_node == &other)
-                    {
-                        other_conn.output_node = this;
-                        break;
-                    }
-                }
-            }
-            else if (connection.output_node == &other)
-            {
-                connection.output_node = this;
-                for (auto& other_conn : ((MyNode*)connection.input_node)->connections)
-                {
-                    if (other_conn.input_node == &other)
-                    {
-                        other_conn.input_node = this;
-                        break;
-                    }
-                }
-            }
-        }
-    }
+    MyNode(const MyNode& other) = delete;
 
     std::vector<ImNodes::SlotInfo> inputs;
     std::vector<ImNodes::SlotInfo> outputs;
     std::vector<ImNodes::Connection> connections;
 };
 
-std::vector<MyNode> available_nodes{
-    MyNode("Node 0",
+std::vector<MyNode*> available_nodes{
+    new MyNode("Node 0",
     {
         // Inputs
         {
@@ -105,7 +70,7 @@ std::vector<MyNode> available_nodes{
             "Output longer",
         }
     }),
-    MyNode("Node 1",
+    new MyNode("Node 1",
     {
         // Inputs
         {
@@ -119,8 +84,7 @@ std::vector<MyNode> available_nodes{
         }
     })
 };
-std::vector<MyNode> nodes;
-ImNodes::CanvasState canvas{};
+std::vector<MyNode*> nodes;
 
 void DeleteConnection(ImNodes::Connection* connection, std::vector<ImNodes::Connection>& connections)
 {
@@ -136,17 +100,18 @@ void DeleteConnection(ImNodes::Connection* connection, std::vector<ImNodes::Conn
 
 void ShowDemoWindow(bool*)
 {
+    static ImNodes::CanvasState canvas{};
     if (ImGui::Begin("ImNodes"))
     {
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::BeginCanvas(&canvas);
         for (auto it = nodes.begin(); it != nodes.end();)
         {
-            MyNode& node = *it;
-            if (ImNodes::BeginNode(&node,
-                &node.inputs[0], node.inputs.size(),
-                &node.outputs[0], node.outputs.size(),
-                &node.connections[0], node.connections.size()))
+            MyNode* node = *it;
+            if (ImNodes::BeginNode(&node->node_info,
+                &node->inputs[0], node->inputs.size(),
+                &node->outputs[0], node->outputs.size(),
+                &node->connections[0], node->connections.size()))
             {
                 // Custom widgets can be rendered in the middle of node
                 ImGui::TextUnformatted("node content");
@@ -155,27 +120,28 @@ void ShowDemoWindow(bool*)
                 ImNodes::Connection new_connection;
                 if (ImNodes::GetNewConnection(&new_connection))
                 {
-                    ((MyNode*) new_connection.input_node)->connections.push_back(new_connection);
-                    ((MyNode*) new_connection.output_node)->connections.push_back(new_connection);
+                    ((MyNode*) new_connection.input_node->userdata)->connections.push_back(new_connection);
+                    ((MyNode*) new_connection.output_node->userdata)->connections.push_back(new_connection);
                 }
 
                 // Remove deleted connections
                 if (ImNodes::Connection* connection = ImNodes::GetDeleteConnection())
                 {
-                    DeleteConnection(connection, ((MyNode*) connection->input_node)->connections);
-                    DeleteConnection(connection, ((MyNode*) connection->output_node)->connections);
+                    DeleteConnection(connection, ((MyNode*) connection->input_node->userdata)->connections);
+                    DeleteConnection(connection, ((MyNode*) connection->output_node->userdata)->connections);
                 }
 
                 ImNodes::EndNode();
             }
 
-            if (node.selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
+            if (node->node_info.selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
             {
-                for (auto& connection : node.connections)
+                for (auto& connection : node->connections)
                 {
-                    DeleteConnection(&connection, ((MyNode*) connection.input_node)->connections);
-                    DeleteConnection(&connection, ((MyNode*) connection.output_node)->connections);
+                    DeleteConnection(&connection, ((MyNode*) connection.input_node->userdata)->connections);
+                    DeleteConnection(&connection, ((MyNode*) connection.output_node->userdata)->connections);
                 }
+                delete node;
                 it = nodes.erase(it);
             }
             else
@@ -183,7 +149,7 @@ void ShowDemoWindow(bool*)
         }
 
         const ImGuiIO& io = ImGui::GetIO();
-        if (ImGui::IsMouseReleased(1) && ImGui::IsMouseHoveringWindow() && !ImGui::IsMouseDragging(1))
+        if (ImGui::IsMouseReleased(1) && ImGui::IsWindowHovered() && !ImGui::IsMouseDragging(1))
         {
             ImGui::FocusWindow(ImGui::GetCurrentWindow());
             ImGui::OpenPopup("NodesContextMenu");
@@ -193,10 +159,13 @@ void ShowDemoWindow(bool*)
         {
             for (const auto& node_template : available_nodes)
             {
-                if (ImGui::MenuItem(node_template.title))
-                    nodes.emplace_back(node_template);
+                if (ImGui::MenuItem(node_template->node_info.title))
+                {
+                    nodes.push_back(new MyNode(node_template->node_info.title, node_template->inputs,
+                        node_template->outputs));
+                }
             }
-            if (ImGui::IsAnyMouseDown() && !ImGui::IsMouseHoveringWindow())
+            if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
                 ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }

@@ -29,14 +29,9 @@
 
 //
 // Appearance can be styled by altering imgui style before calls to ImNodes::*,
-// Colors:
-//  * ImGuiCol_PlotLines - for connector dots and connection lines.
-//  * ImGuiCol_PlotLinesHovered - for connector dots and connection lines when they are hovered/active.
-//  * ImGuiCol_Border - for node and connector borders.
-//  * ImGuiCol_FrameBg - for node background.
-//  * ImGuiCol_FrameBgActive - selected node background.
-//  * ImGuiCol_Separator - color of grid lines.
+// Style:
 //  * FrameRounding - node border rounding.
+//
 
 namespace ImNodes
 {
@@ -50,6 +45,20 @@ enum SlotType : unsigned
     OutputSlot,
 };
 
+enum StyleColor
+{
+    CanvasLines,
+    NodeBg,
+    NodeActiveBg,
+    NodeBorder,
+    Conn,
+    ConnActive,
+    ConnBorder,
+    SelectBg,
+    SelectBorder,
+    ColorMax
+};
+
 struct _CanvasStateImpl;
 
 struct IMGUI_API CanvasState
@@ -58,6 +67,8 @@ struct IMGUI_API CanvasState
     float zoom = 1.0;
     /// Current scroll offset of canvas.
     ImVec2 offset{};
+    /// Colors used to style elements of this canvas.
+    ImColor colors[StyleColor::ColorMax];
     /// Implementation detail.
     _CanvasStateImpl* _impl = nullptr;
 
@@ -74,6 +85,8 @@ struct IMGUI_API NodeInfo
     ImVec2 pos = NODE_OFFSCREEN_POSITION;
     /// Set to `true` when current node is selected.
     bool selected = false;
+    /// A pointer that user is free to set to anything.
+    void* userdata = nullptr;
 
     NodeInfo() = default;
     NodeInfo(const NodeInfo& other) = default;
@@ -124,5 +137,7 @@ IMGUI_API bool GetNewConnection(Connection* connection);
 /// Returns a connection from `connections` array passed to BeginNode() when that connection is deleted. Must be called
 /// at id scope created by BeginNode().
 IMGUI_API Connection* GetDeleteConnection();
+/// Returns active canvas state when called between BeginCanvas() and EndCanvas(). Returns nullptr otherwise. This function is not thread-safe.
+IMGUI_API CanvasState* GetCurrentCanvas();
 
 }   // namespace ImNodes

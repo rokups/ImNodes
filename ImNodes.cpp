@@ -29,6 +29,7 @@ namespace ImNodes
 {
 
 static const float SLOT_CIRCLE_RADIUS = 5.f;
+static CanvasState* gCanvas = nullptr;
 
 void PopID(int n)
 {
@@ -89,6 +90,18 @@ struct _CanvasStateImpl
 CanvasState::CanvasState() noexcept
 {
     _impl = new _CanvasStateImpl();
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+    colors[CanvasLines] = style.Colors[ImGuiCol_Separator];
+    colors[NodeBg] = style.Colors[ImGuiCol_WindowBg];
+    colors[NodeActiveBg] = style.Colors[ImGuiCol_FrameBgActive];
+    colors[NodeBorder] = style.Colors[ImGuiCol_Border];
+    colors[Conn] = style.Colors[ImGuiCol_PlotLines];
+    colors[ConnActive] = style.Colors[ImGuiCol_PlotLinesHovered];
+    colors[ConnBorder] = style.Colors[ImGuiCol_Border];
+    colors[SelectBg] = style.Colors[ImGuiCol_FrameBgActive];
+    colors[SelectBg].Value.w = 0.25f;
+    colors[SelectBorder] = style.Colors[ImGuiCol_Border];
 }
 
 CanvasState::~CanvasState()
@@ -116,13 +129,13 @@ float GetDistanceToLineSquared(const ImVec2& point, const ImVec2& a, const ImVec
 bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float thickness)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    CanvasState& canvas = *(CanvasState*) ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
+    CanvasState* canvas = (CanvasState*) ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    thickness *= canvas.zoom;
+    thickness *= canvas->zoom;
 
-    ImVec2 p2 = input_pos - ImVec2{100 * canvas.zoom, 0};
-    ImVec2 p3 = output_pos + ImVec2{100 * canvas.zoom, 0};
+    ImVec2 p2 = input_pos - ImVec2{100 * canvas->zoom, 0};
+    ImVec2 p3 = output_pos + ImVec2{100 * canvas->zoom, 0};
 
     // Assemble segments for path
     draw_list->PathLineTo(input_pos);
@@ -138,8 +151,7 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
 
     // Draw curve, change when it is hovered
     bool is_close = min_square_distance <= thickness * thickness;
-    draw_list->PathStroke(
-        ImColor(is_close ? style.Colors[ImGuiCol_PlotLinesHovered] : style.Colors[ImGuiCol_PlotLines]), false, thickness);
+    draw_list->PathStroke(is_close ? canvas->colors[ConnActive] : canvas->colors[Conn], false, thickness);
     return is_close;
 }
 
@@ -167,9 +179,11 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
     {
         SlotInfo* current_slot = &slots[i];
         ImGui::PushID(current_slot);
+        ImVec2 text_size = ImGui::CalcTextSize(current_slot->title);
+
         if (type == OutputSlot)
         {
-            float offset = (max_title_length + style.ItemSpacing.x) - ImGui::CalcTextSize(current_slot->title).x;
+            float offset = (max_title_length + style.ItemSpacing.x) - text_size.x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
             ImGui::TextUnformatted(current_slot->title);
             ImGui::SameLine(0, 0);
@@ -177,16 +191,12 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
 
         const float circle_radius = SLOT_CIRCLE_RADIUS * canvas->zoom;
         ImRect circle_rect;
-        if (type == InputSlot)
-        {
-            circle_rect = {ImGui::GetCursorScreenPos() - ImVec2{circle_radius, 0},
-                ImGui::GetCursorScreenPos() + ImVec2{circle_radius, circle_radius * 2}};
-        }
-        else
-        {
-            circle_rect = {ImGui::GetCursorScreenPos() + ImVec2{circle_radius, 0},
-                ImGui::GetCursorScreenPos() + ImVec2{circle_radius * 3, circle_radius * 2}};
-        }
+        float circle_center_y = ImGui::GetCursorScreenPos().y + text_size.y / 2;
+        circle_rect.Min = {
+            ImGui::GetCursorScreenPos().x + circle_radius * (type == InputSlot ? -1 : 1),
+            circle_center_y - circle_radius
+        };
+        circle_rect.Max = circle_rect.Min + ImVec2{circle_radius * 2, circle_radius * 2};
 
         ImVec2 slot_center = circle_rect.GetCenter();
         storage->SetFloat(ImGui::GetID("x"), slot_center.x);
@@ -196,11 +206,8 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         ImGui::ItemSize(circle_rect.GetSize());
         ImGui::ItemAdd(circle_rect, slot_id);
 
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-        {
-            if (ImGui::IsMouseClicked(0))
-                ImGui::SetActiveID(slot_id, ImGui::GetCurrentWindow());
-        }
+        if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
+            ImGui::SetActiveID(slot_id, ImGui::GetCurrentWindow());
 
         if (ImGui::IsItemActive() && !ImGui::IsMouseDown(0))
             ImGui::ClearActiveID();
@@ -208,7 +215,7 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         ImU32 curve_hovered_id = ImGui::GetID("curve-hovered");
         bool is_connected = false;
         bool is_active = ImGui::IsItemActive();
-        bool is_hovered = storage->GetBool(curve_hovered_id) || (!ImGui::IsMouseDown(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly));
+        bool is_hovered = storage->GetBool(curve_hovered_id) || (!ImGui::IsMouseDown(0) && ImGui::IsItemHovered());
 
         for (int j = 0; !is_connected && j < impl->cnum; j++)
         {
@@ -296,12 +303,12 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
         {
             storage->SetBool(curve_hovered_id, false); // Will be set on next frame if it is hovered
             draw_list->AddCircleFilled(circle_rect.GetCenter(), circle_radius,
-                ImColor(is_hovered ? style.Colors[ImGuiCol_PlotLinesHovered] : style.Colors[ImGuiCol_PlotLines]));
+                is_hovered ? canvas->colors[ConnActive] : canvas->colors[Conn]);
         }
         else
         {
-            draw_list->AddCircleFilled(circle_rect.GetCenter(), circle_radius, ImColor(style.Colors[ImGuiCol_PlotLines]));
-            draw_list->AddCircle(circle_rect.GetCenter(), circle_radius, ImColor(style.Colors[ImGuiCol_Border]));
+            draw_list->AddCircleFilled(circle_rect.GetCenter(), circle_radius, canvas->colors[Conn]);
+            draw_list->AddCircle(circle_rect.GetCenter(), circle_radius, canvas->colors[ConnBorder]);
         }
 
         if (type == InputSlot)
@@ -321,6 +328,8 @@ void SlotsInternal(SlotType type, SlotInfo* slots, int snum)
 void BeginCanvas(CanvasState* canvas)
 {
     assert(canvas != nullptr);
+    assert(gCanvas == nullptr);     // Canvas nesting is not supported.
+    gCanvas = canvas;
     const ImGuiWindow* w = ImGui::GetCurrentWindow();
     ImGui::PushID(canvas);
 
@@ -354,7 +363,7 @@ void BeginCanvas(CanvasState* canvas)
     ImVec2 pos = ImGui::GetWindowPos();
     ImVec2 size = ImGui::GetWindowSize();
 
-    ImU32 grid_color = ImColor(ImGui::GetStyle().Colors[ImGuiCol_Separator]);
+    ImU32 grid_color = ImColor(canvas->colors[CanvasLines]);
     for (float x = fmodf(canvas->offset.x, grid); x < size.x;)
     {
         draw_list->AddLine(ImVec2(x, 0) + pos, ImVec2(x, size.y) + pos, grid_color);
@@ -372,6 +381,7 @@ void BeginCanvas(CanvasState* canvas)
 
 void EndCanvas()
 {
+    assert(gCanvas != nullptr);     // Did you forget calling BeginCanvas()?
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = (CanvasState*)ImGui::GetStateStorage()->GetVoidPtr(ImGui::GetID("canvas-state"));
     auto* impl = canvas->_impl;
@@ -473,8 +483,8 @@ void EndCanvas()
     {
         if (ImGui::IsMouseDown(0))
         {
-            draw_list->AddRectFilled(impl->selection_start, ImGui::GetMousePos(), ImColor(style.Colors[ImGuiCol_FrameBg]));
-            draw_list->AddRect(impl->selection_start, ImGui::GetMousePos(), ImColor(style.Colors[ImGuiCol_Border]));
+            draw_list->AddRectFilled(impl->selection_start, ImGui::GetMousePos(), canvas->colors[SelectBg]);
+            draw_list->AddRect(impl->selection_start, ImGui::GetMousePos(), canvas->colors[SelectBorder]);
         }
         else
         {
@@ -488,6 +498,7 @@ void EndCanvas()
     impl->all_nodes.clear();
     ImGui::SetWindowFontScale(1.f);
     ImGui::PopID();     // canvas
+    gCanvas = nullptr;
 }
 
 bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, int onum,
@@ -554,7 +565,7 @@ bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, in
             PopID(3);
 
             bool curve_hovered = RenderConnection(input_slot_pos, output_slot_pos, SLOT_CIRCLE_RADIUS);
-            if (curve_hovered)
+            if (curve_hovered && ImGui::IsWindowHovered())
             {
                 if (ImGui::IsMouseDoubleClicked(0))
                     impl->delete_connection = connection;
@@ -597,6 +608,9 @@ void EndNode()
     auto* impl = canvas->_impl;
     auto* node = impl->current_node;
 
+    // Spacing after node content. Required for proper rendering when slot column heights are less than content column height.
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style.ItemSpacing.y * canvas->zoom);
+
     // Render output slots
     {
         ImGui::EndGroup();    // Content group
@@ -619,9 +633,9 @@ void EndNode()
     // Render frame
     draw_list->ChannelsSetCurrent(0);
 
-    ImColor node_color(style.Colors[node->selected ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg]);
+    ImColor node_color = canvas->colors[node->selected ? NodeActiveBg : NodeBg];
     draw_list->AddRectFilled(node_rect.Min, node_rect.Max, node_color, style.FrameRounding);
-    draw_list->AddRect(node_rect.Min, node_rect.Max, ImColor(style.Colors[ImGuiCol_Border]), style.FrameRounding);
+    draw_list->AddRect(node_rect.Min, node_rect.Max, canvas->colors[NodeBorder], style.FrameRounding);
 
     // Create node item
     ImGuiID node_id = ImGui::GetID("node");
@@ -629,7 +643,7 @@ void EndNode()
     ImGui::ItemAdd(node_rect, node_id);
 
     // Node is active when being dragged
-    if (!ImGui::IsAnyItemActive() && ImGui::IsMouseHoveringRect(node_rect.Min, node_rect.Max) && ImGui::IsMouseDown(0))
+    if (ImGui::IsMouseDown(0) && !ImGui::IsAnyItemActive() && ImGui::IsItemHovered())
         ImGui::SetActiveID(node_id, ImGui::GetCurrentWindow());
     else if (!ImGui::IsMouseDown(0) && ImGui::IsItemActive())
         ImGui::ClearActiveID();
@@ -644,7 +658,7 @@ void EndNode()
         {
             // No selections are performed when nodes are being connected.
         }
-        else if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly) && ImGui::IsMouseReleased(0))
+        else if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered() && !ImGui::IsAnyItemActive())
         {
             node->selected ^= true;
             if (!io.KeyCtrl)
@@ -742,6 +756,11 @@ Connection* GetDeleteConnection()
         return connection;
     }
     return nullptr;
+}
+
+CanvasState* GetCurrentCanvas()
+{
+    return gCanvas;
 }
 
 bool Connection::operator==(const Connection& other) const
