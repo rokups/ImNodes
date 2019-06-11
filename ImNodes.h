@@ -28,35 +28,26 @@
 #include <limits>
 
 //
-// Appearance can be styled by altering imgui style before calls to ImNodes::*,
+// Appearance can be styled by altering ImGui style before calls to ImNodes::*,
 // Style:
 //  * FrameRounding - node border rounding.
+//  * ItemInnerSpacing - spacing between node borders and node content.
 //
 
 namespace ImNodes
 {
 
-/// Initial position of every node. Node placed here will be automatically moved to the mouse cursor.
-static const ImVec2 NODE_OFFSCREEN_POSITION{-999999.f, -999999.f};
-
-enum SlotType : unsigned
-{
-    InputSlot,
-    OutputSlot,
-};
-
 enum StyleColor
 {
-    CanvasLines,
-    NodeBg,
-    NodeActiveBg,
-    NodeBorder,
-    Conn,
-    ConnActive,
-    ConnBorder,
-    SelectBg,
-    SelectBorder,
-    ColorMax
+    ColCanvasLines,
+    ColNodeBg,
+    ColNodeActiveBg,
+    ColNodeBorder,
+    ColConnection,
+    ColConnectionActive,
+    ColSelectBg,
+    ColSelectBorder,
+    ColMax
 };
 
 struct _CanvasStateImpl;
@@ -68,7 +59,16 @@ struct IMGUI_API CanvasState
     /// Current scroll offset of canvas.
     ImVec2 offset{};
     /// Colors used to style elements of this canvas.
-    ImColor colors[StyleColor::ColorMax];
+    ImColor colors[StyleColor::ColMax];
+    /// Style parameters
+    struct
+    {
+        /// Thickness of curves that connect slots together.
+        float curve_thickness = 5.f;
+        /// Indent connection into slot widget a little. Useful when slot content covers connection end with some kind
+        /// of icon (like a circle) and then no seam between icon and connection end is visible.
+        float connection_indent = 1.f;
+    } style{};
     /// Implementation detail.
     _CanvasStateImpl* _impl = nullptr;
 
@@ -76,68 +76,45 @@ struct IMGUI_API CanvasState
     ~CanvasState();
 };
 
-/// Each node must have a unique NodeInfo struct.
-struct IMGUI_API NodeInfo
-{
-    /// Title that will be rendered at the top of node.
-    const char* title = nullptr;
-    /// Node position on canvas.
-    ImVec2 pos = NODE_OFFSCREEN_POSITION;
-    /// Set to `true` when current node is selected.
-    bool selected = false;
-    /// A pointer that user is free to set to anything.
-    void* userdata = nullptr;
-
-    NodeInfo() = default;
-    NodeInfo(const NodeInfo& other) = default;
-};
-
-/// SlotInfo struct may be shared between different nodes.
-struct IMGUI_API SlotInfo
-{
-    /// Title that will be rendered next to slot connector.
-    const char* title = nullptr;
-    /// Only slots of same kind can be connected.
-    int kind = 0;
-};
-
-struct IMGUI_API Connection
-{
-    /// `id` that was passed to BeginNode() of input node.
-    NodeInfo* input_node = nullptr;
-    /// Descriptor of input slot.
-    SlotInfo* input_slot = nullptr;
-    /// `id` that was passed to BeginNode() of output node.
-    NodeInfo* output_node = nullptr;
-    /// Descriptor of output slot.
-    SlotInfo* output_slot = nullptr;
-
-    bool operator ==(const Connection& other) const;
-    bool operator != (const Connection& other) const;
-};
-
 /// Create a node graph canvas in current window.
 IMGUI_API void BeginCanvas(CanvasState* canvas);
 /// Terminate a node graph canvas that was created by calling BeginCanvas().
 IMGUI_API void EndCanvas();
-/// Begin rendering of node in a graph. Render custom node widgets and handle connections when this function returns `true`.
-/// \param node is a state that should be preserved across sessions.
-/// \param inputs is an array of slot descriptors for inputs (left side).
-/// \param inum is a number of descriptors in `inputs` array.
-/// \param outputs is an array of slot descriptors for outputs (right side).
-/// \param onum is a number of descriptors in `outputs` array.
-/// \param connections is an array of current active connections.
-/// \param cnum is a number of connections in `connections` array.
-IMGUI_API bool BeginNode(NodeInfo* node, SlotInfo* inputs, int inum, SlotInfo* outputs, int onum, Connection* connections, int cnum);
-/// Terminates current node. Should only be called when BeginNode() returns `true`.
+/// Begin rendering of node in a graph. Render node content when returns `true`.
+IMGUI_API bool BeginNode(void* node_id, ImVec2* pos, bool* selected);
+/// Terminates current node. Should be called regardless of BeginNode() returns value.
 IMGUI_API void EndNode();
+/// Specified node will be positioned at the mouse cursor on next frame. Call when new node is created.
+IMGUI_API void AutoPositionNode(void* node_id);
 /// Returns `true` when new connection is made. Connection information is returned into `connection` parameter. Must be
 /// called at id scope created by BeginNode().
-IMGUI_API bool GetNewConnection(Connection* connection);
-/// Returns a connection from `connections` array passed to BeginNode() when that connection is deleted. Must be called
-/// at id scope created by BeginNode().
-IMGUI_API Connection* GetDeleteConnection();
+IMGUI_API bool GetNewConnection(void** input_node, const char** input_slot, void** output_node, const char** output_slot);
+/// Get information of connection that is being made and has only one end connected. Returns true when pending connection exists, false otherwise.
+IMGUI_API bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kind);
+/// Render a connection. Returns `true` when connection is present, `false` if it is deleted. Should be called before EndNode().
+IMGUI_API bool Connection(void* input_node, const char* input_slot, void* output_node, const char* output_slot);
 /// Returns active canvas state when called between BeginCanvas() and EndCanvas(). Returns nullptr otherwise. This function is not thread-safe.
 IMGUI_API CanvasState* GetCurrentCanvas();
+/// Convert kind id to input type.
+inline int InputSlotKind(int kind) { return kind > 0 ? -kind : kind; }
+/// Convert kind id to output type.
+inline int OutputSlotKind(int kind) { return kind < 0 ? -kind : kind; }
+/// Returns `true` if `kind` is from input slot.
+inline bool IsInputSlotKind(int kind) { return kind < 0; }
+/// Returns `true` if `kind` is from output slot.
+inline bool IsOutputSlotKind(int kind) { return kind > 0; }
+/// Begins slot region. Kind is unique value indicating slot type. Negative values mean input slots, positive - output slots.
+IMGUI_API bool BeginSlot(const char* title, int kind);
+/// Begins slot region. Kind is unique value whose sign is ignored.
+inline bool BeginInputSlot(const char* title, int kind) { return BeginSlot(title, InputSlotKind(kind)); }
+/// Begins slot region. Kind is unique value whose sign is ignored.
+inline bool BeginOutputSlot(const char* title, int kind) { return BeginSlot(title, OutputSlotKind(kind)); }
+/// Rends rendering of slot. Call only if Begin*Slot() returned `true`.
+IMGUI_API void EndSlot();
+/// Returns `true` if curve connected to current slot is hovered. Call between `Begin*Slot()` and `EndSlot()`. In-progress
+/// connection is considered hovered as well.
+IMGUI_API bool IsSlotCurveHovered();
+/// Returns `true` when new slot is being created and current slot can be connected. Call between `Begin*Slot()` and `EndSlot()`.
+IMGUI_API bool IsConnectingCompatibleSlot();
 
 }   // namespace ImNodes
