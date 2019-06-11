@@ -112,22 +112,8 @@ struct BaseNode
             if (ImNodes::GetNewConnection(&new_connection.input_node, &new_connection.input_slot,
                 &new_connection.output_node, &new_connection.output_slot))
             {
-                // Prevent double-connecting same connection
-                bool exists = false;
-                for (const Connection& connection : connections)
-                {
-                    if (connection == new_connection)
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
-
-                if (!exists)
-                {
-                    ((BaseNode*) new_connection.input_node)->connections.push_back(new_connection);
-                    ((BaseNode*) new_connection.output_node)->connections.push_back(new_connection);
-                }
+                ((BaseNode*) new_connection.input_node)->connections.push_back(new_connection);
+                ((BaseNode*) new_connection.output_node)->connections.push_back(new_connection);
             }
 
             // Render output connections of this node

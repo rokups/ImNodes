@@ -55,6 +55,29 @@ struct _DragConnectionPayload
     int slot_kind = 0;
 };
 
+/// Node-slot combination.
+struct _IgnoreSlot
+{
+    /// Node id.
+    void* node_id = nullptr;
+    /// Slot name.
+    const char* slot_name = nullptr;
+    /// Slot kind. Not actual slot kind, but +1 or -1. Used to determine if slot is input or output.
+    int slot_kind = 0;
+
+    /// Equality operator, required by ImVector.
+    bool operator==(const _IgnoreSlot& other) const
+    {
+        if (node_id != other.node_id || slot_kind != other.slot_kind)
+            return false;
+
+        if (slot_name != nullptr && other.slot_name != nullptr)
+            return strcmp(slot_name, other.slot_name) == 0;
+
+        return other.slot_name == slot_name;
+    }
+};
+
 struct _CanvasStateImpl
 {
     /// Storage for various internal node/slot attributes.
@@ -105,6 +128,8 @@ struct _CanvasStateImpl
     bool just_connected = false;
     /// Previous canvas pointer. Used to restore proper gCanvas value when nesting canvases.
     CanvasState* prev_canvas = nullptr;
+    /// A list of node/slot combos that can not connect to current pending connection.
+    ImVector<_IgnoreSlot> ignore_connections{};
 };
 
 CanvasState::CanvasState() noexcept
@@ -611,6 +636,37 @@ bool Connection(void* input_node, const char* input_slot, void* output_node, con
     impl->cached_data.SetFloat(MakeSlotDataID("hovered", input_slot, input_node, true), curve_hovered && is_connected);
     impl->cached_data.SetFloat(MakeSlotDataID("hovered", output_slot, output_node, false), curve_hovered && is_connected);
 
+    void* pending_node_id;
+    const char* pending_slot_title;
+    int pending_slot_kind;
+    if (GetPendingConnection(&pending_node_id, &pending_slot_title, &pending_slot_kind))
+    {
+        _IgnoreSlot ignore_connection{};
+        if (IsInputSlotKind(pending_slot_kind))
+        {
+            if (pending_node_id == input_node && strcmp(pending_slot_title, input_slot) == 0)
+            {
+                ignore_connection.node_id = output_node;
+                ignore_connection.slot_name = output_slot;
+                ignore_connection.slot_kind = OutputSlotKind(1);
+            }
+        }
+        else
+        {
+            if (pending_node_id == output_node && strcmp(pending_slot_title, output_slot) == 0)
+            {
+                ignore_connection.node_id = input_node;
+                ignore_connection.slot_name = input_slot;
+                ignore_connection.slot_kind = InputSlotKind(1);
+            }
+        }
+        if (ignore_connection.node_id)
+        {
+            if (!impl->ignore_connections.contains(ignore_connection))
+                impl->ignore_connections.push_back(ignore_connection);
+        }
+    }
+
     return is_connected;
 }
 
@@ -685,12 +741,13 @@ void EndSlot()
             impl->new_connection.input_slot = nullptr;
             impl->new_connection.output_node = nullptr;
             impl->new_connection.output_slot = nullptr;
+            canvas->_impl->ignore_connections.clear();
         }
         ImGui::TextUnformatted(impl->slot.title);
         ImGui::EndDragDropSource();
     }
 
-    if (ImGui::BeginDragDropTarget())
+    if (IsConnectingCompatibleSlot() && ImGui::BeginDragDropTarget())
     {
         // Accept drags from opposite type (input <-> output, and same kind)
         char drag_id[32];
@@ -716,6 +773,7 @@ void EndSlot()
                 impl->new_connection.output_slot = drag_data->slot_title;
             }
             impl->just_connected = true;
+            canvas->_impl->ignore_connections.clear();
         }
 
         ImGui::EndDragDropTarget();
@@ -768,7 +826,18 @@ bool IsConnectingCompatibleSlot()
 
         char drag_id[32];
         snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind * -1);
-        return strcmp(drag_id, payload->DataType) == 0;
+        if (strcmp(drag_id, payload->DataType) != 0)
+            return false;
+
+        for (int i = 0; i < impl->ignore_connections.size(); i++)
+        {
+            const _IgnoreSlot& ignored = impl->ignore_connections[i];
+            if (ignored.node_id == impl->node.id && strcmp(ignored.slot_name, ignored.slot_name) == 0 &&
+                IsInputSlotKind(ignored.slot_kind) == IsInputSlotKind(impl->slot.kind))
+                return false;
+        }
+
+        return true;
     }
 
     return false;
