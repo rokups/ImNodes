@@ -548,13 +548,13 @@ void EndNode()
     ImGui::PopID();     // id
 }
 
-bool GetNewConnection(void** input_node, const char** input_slot, void** output_node, const char** output_slot)
+bool GetNewConnection(void** input_node, const char** input_slot_title, void** output_node, const char** output_slot_title)
 {
     assert(gCanvas != nullptr);
     assert(input_node != nullptr);
-    assert(input_slot != nullptr);
+    assert(input_slot_title != nullptr);
     assert(output_node != nullptr);
-    assert(output_slot != nullptr);
+    assert(output_slot_title != nullptr);
 
     auto* canvas = gCanvas;
     auto* impl = canvas->_impl;
@@ -562,9 +562,9 @@ bool GetNewConnection(void** input_node, const char** input_slot, void** output_
     if (impl->new_connection.output_node != nullptr)
     {
         *input_node = impl->new_connection.input_node;
-        *input_slot = impl->new_connection.input_slot;
+        *input_slot_title = impl->new_connection.input_slot;
         *output_node = impl->new_connection.output_node;
-        *output_slot = impl->new_connection.output_slot;
+        *output_slot_title = impl->new_connection.output_slot;
         memset(&impl->new_connection, 0, sizeof(impl->new_connection));
         return true;
     }
