@@ -63,6 +63,8 @@ if (UNIX)
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/libs/gl3w/GL/glcorearb.h
         ImNodes.h
         ImNodes.cpp
+        ImNodesEz.h
+        ImNodesEz.cpp
         sample.cpp
     )
     target_include_directories(ImNodes PUBLIC
