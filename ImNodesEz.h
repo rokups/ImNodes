@@ -45,8 +45,12 @@ IMGUI_API bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* se
 /// Terminates current node. Should be called regardless of BeginNode() returns value.
 IMGUI_API void EndNode();
 /// Renders input slot region. Kind is unique value whose sign is ignored.
+/// This function must always be called after BeginNode() and before OutputSlots().
+/// When no input slots are rendered call InputSlots(nullptr, 0);
 IMGUI_API void InputSlots(const SlotInfo* slots, int snum);
-/// Renders output slot region. Kind is unique value whose sign is ignored.
+/// Renders output slot region. Kind is unique value whose sign is ignored. This function must always be called after InputSlots() and function call is required (not optional).
+/// This function must always be called after InputSlots() and before EndNode().
+/// When no input slots are rendered call OutputSlots(nullptr, 0);
 IMGUI_API void OutputSlots(const SlotInfo* slots, int snum);
 
 }
