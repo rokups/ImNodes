@@ -470,7 +470,7 @@ void EndNode()
             // Unselect other nodes when some node was left-clicked.
             node_selected = impl->single_selected_node == node_id;
         }
-        else if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && !ImGui::IsAnyItemActive())
+        else if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::IsItemActive())
         {
             node_selected ^= true;
             if (!io.KeyCtrl && node_selected)
