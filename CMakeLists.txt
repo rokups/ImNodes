@@ -20,7 +20,7 @@
 # THE SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.1)
 project(imnoodles)
 
 set(CMAKE_CXX_STANDARD 14)
