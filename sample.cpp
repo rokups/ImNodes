@@ -178,8 +178,10 @@ void ShowDemoWindow(bool*)
             {
                 for (auto& connection : node->connections)
                 {
-                    ((MyNode*) connection.input_node)->DeleteConnection(connection);
-                    ((MyNode*) connection.output_node)->DeleteConnection(connection);
+                    if (connection.input_node != node)
+                        ((MyNode*) connection.input_node)->DeleteConnection(connection);
+                    if (connection.output_node != node)
+                        ((MyNode*) connection.output_node)->DeleteConnection(connection);
                 }
                 delete node;
                 it = nodes.erase(it);
