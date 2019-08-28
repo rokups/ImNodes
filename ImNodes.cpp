@@ -523,7 +523,7 @@ void EndNode()
         {
             // Upon node creation we would like it to be positioned at the center of mouse cursor. This can be done only
             // once widget dimensions are known at the end of rendering and thus on the next frame.
-            node_pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->Pos - canvas->offset - (node_rect.GetSize() / 2);
+            node_pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->InnerClipRect.Min + ImGui::GetCurrentWindow()->Scroll + canvas->rect.Min - (node_rect.GetSize() / 2);
             impl->auto_position_node_id = nullptr;
         }
         break;
