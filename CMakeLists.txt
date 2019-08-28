@@ -37,30 +37,30 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui.zip")
         file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v1.70.zip" ${CMAKE_CURRENT_BINARY_DIR}/imgui.zip)
     endif ()
-    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70")
+    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b")
         execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_CURRENT_BINARY_DIR}/imgui.zip)
     endif ()
 endif ()
 
 if (UNIX)
     add_executable(ImNodes
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/example_sdl_opengl3/main.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/imgui_impl_opengl3.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/imgui_impl_opengl3.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/imgui_impl_sdl.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/imgui_impl_sdl.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imconfig.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imgui.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imgui.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imgui_draw.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imgui_widgets.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imgui_internal.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imstb_rectpack.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imstb_textedit.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/imstb_truetype.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/libs/gl3w/GL/gl3w.c
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/libs/gl3w/GL/gl3w.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/libs/gl3w/GL/glcorearb.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/example_sdl_opengl3/main.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/imgui_impl_opengl3.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/imgui_impl_opengl3.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/imgui_impl_sdl.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/imgui_impl_sdl.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imconfig.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imgui.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imgui.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imgui_draw.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imgui_widgets.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imgui_internal.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imstb_rectpack.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imstb_textedit.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/imstb_truetype.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/libs/gl3w/GL/gl3w.c
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/libs/gl3w/GL/gl3w.h
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/libs/gl3w/GL/glcorearb.h
         ImNodes.h
         ImNodes.cpp
         ImNodesEz.h
@@ -69,9 +69,9 @@ if (UNIX)
     )
     target_include_directories(ImNodes PUBLIC
         ${SDL2_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.70/examples/libs/gl3w
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples
+        ${CMAKE_CURRENT_BINARY_DIR}/imgui-1.72b/examples/libs/gl3w
     )
     target_link_libraries(ImNodes PUBLIC ${SDL2_LIBRARIES} -ldl -lGL)
     target_compile_options(ImNodes PUBLIC ${SDL2_CFLAGS_OTHER})

@@ -296,7 +296,8 @@ void EndCanvas()
         canvas->rect.Max.x = canvas->rect.Min.x + wsize.x;
     if ( csize.y < wsize.y )
         canvas->rect.Max.y = canvas->rect.Min.y + wsize.y;
-    ImGui::SetCursorScreenPos(w->InnerClipRect.Min - w->Scroll + canvas->rect.Max - canvas->rect.Min);
+    // set the cursor to the maximum canvas position so imgui knows where to put scrollbars
+    ImGui::SetCursorPos(canvas->rect.GetSize());
 
     // Draw pending connection
     if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
