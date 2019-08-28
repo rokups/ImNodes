@@ -245,10 +245,10 @@ void BeginCanvas(CanvasState* canvas)
         }
 
         if (io.KeyShift && !io.KeyCtrl)
-            canvas->offset.x += io.MouseWheel * 16.0f;
+            ImGui::SetScrollX( ImGui::GetScrollX() + io.MouseWheel * -16.0f);
 
         if (!io.KeyShift && !io.KeyCtrl)
-            canvas->offset.y += io.MouseWheel * 16.0f;
+            ImGui::SetScrollY( ImGui::GetScrollY() + io.MouseWheel * -16.0f);
 
         if (!io.KeyShift && io.KeyCtrl)
         {
