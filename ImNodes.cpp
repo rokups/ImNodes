@@ -247,7 +247,7 @@ void BeginCanvas(CanvasState* canvas)
         if (io.KeyShift && !io.KeyCtrl)
             ImGui::SetScrollX( ImGui::GetScrollX() + io.MouseWheel * -16.0f);
 
-        if (!io.KeyShift && !io.KeyCtrl)
+        if (!io.KeyShift && !io.KeyCtrl && io.MouseWheel != 0.f )
             ImGui::SetScrollY( ImGui::GetScrollY() + io.MouseWheel * -16.0f);
 
         if (!io.KeyShift && io.KeyCtrl)
