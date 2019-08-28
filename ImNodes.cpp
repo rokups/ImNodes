@@ -254,7 +254,6 @@ void BeginCanvas(CanvasState* canvas)
         {
             if (io.MouseWheel != 0)
                 canvas->zoom = ImClamp(canvas->zoom + io.MouseWheel * canvas->zoom / 16.f, 0.3f, 3.f);
-            canvas->offset += ImGui::GetMouseDragDelta();
         }
     }
 
