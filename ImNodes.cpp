@@ -222,6 +222,9 @@ void BeginCanvas(CanvasState* canvas)
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGuiIO& io = ImGui::GetIO();
 
+    // initialize contents_rect to the current window viewport
+    canvas->contents_rect = ImRect(canvas->rect.Min + w->Scroll, canvas->rect.Min + w->Scroll + w->InnerClipRect.GetSize() );//ImRect(0,0,0,0);
+
     if (!ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
     {
         if (ImGui::IsMouseDragging(1))
@@ -235,13 +238,11 @@ void BeginCanvas(CanvasState* canvas)
                 canvas->rect.Max.x -= io.MouseDelta.x;
             if ( w->Scroll.y == w->ScrollMax.y && io.MouseDelta.y < 0.)
                 canvas->rect.Max.y -= io.MouseDelta.y;
-            // todo: decrease the canvas
-            else
-            {
-                ImVec2 s = w->Scroll - io.MouseDelta;
-                ImGui::SetScrollX(s.x);
-                ImGui::SetScrollY(s.y);
-            }
+
+            ImVec2 s = w->Scroll - io.MouseDelta;
+            ImGui::SetScrollX(s.x);
+            ImGui::SetScrollY(s.y);
+            canvas->contents_rect.Translate(io.MouseDelta*-1);
         }
 
         if (io.KeyShift && !io.KeyCtrl)
@@ -261,7 +262,7 @@ void BeginCanvas(CanvasState* canvas)
 
     ImVec2 pos = w->ClipRect.Min;
     ImVec2 size = w->ClipRect.GetSize();
-    ImVec2 canvas_offset =  w->Scroll + canvas->rect.Min;
+    ImVec2 canvas_offset = canvas->contents_rect.Min; // same as viewport's min
 
     ImU32 grid_color = ImColor(canvas->colors[ColCanvasLines]);
     for (float x = fmodf(-canvas_offset.x, grid); x < size.x;)
@@ -297,7 +298,9 @@ void EndCanvas()
     if ( csize.y < wsize.y )
         canvas->rect.Max.y = canvas->rect.Min.y + wsize.y;
     // set the cursor to the maximum canvas position so imgui knows where to put scrollbars
-    ImGui::SetCursorPos(canvas->rect.GetSize());
+    ImGui::SetCursorPos(canvas->contents_rect.GetSize());
+    // switch canvas->rect to the contents_rect to enable shrinking it
+    canvas->rect = canvas->contents_rect;
 
     // Draw pending connection
     if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
@@ -457,6 +460,10 @@ void EndNode()
         ImGui::GetItemRectMin() - style.ItemInnerSpacing * canvas->zoom,
         ImGui::GetItemRectMax() + style.ItemInnerSpacing * canvas->zoom
     };
+
+    // add the node rect to the canvas content_rect, used to determine occupied canvas area
+    canvas->contents_rect.Min = ImMin(canvas->contents_rect.Min, node_pos);
+    canvas->contents_rect.Max = ImMax(canvas->contents_rect.Max, node_pos + node_rect.GetSize());
 
     // Render frame
     draw_list->ChannelsSetCurrent(0);

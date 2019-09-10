@@ -58,6 +58,8 @@ struct IMGUI_API CanvasState
     float zoom = 1.0;
     /// Contents rectangle of canvas
     ImRect rect = { 0.f, 0.f, 0.f, 0.f };
+    /// Occupied contents rectangle of canvas
+    ImRect contents_rect {};
     /// Colors used to style elements of this canvas.
     ImColor colors[StyleColor::ColMax];
     /// Style parameters
