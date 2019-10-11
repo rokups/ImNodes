@@ -176,20 +176,21 @@ void ShowDemoWindow(bool*)
 
             if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
             {
+                // Deletion order is critical: first we delete connections to us
                 for (auto& connection : node->connections)
                 {
-                    // Deletion order is critical in case multiple connections to a node exist
                     if (connection.output_node == node)
                     {
                         ((MyNode*) connection.input_node)->DeleteConnection(connection);
-                        ((MyNode*) connection.output_node)->DeleteConnection(connection);
                     }
                     else
                     {
                         ((MyNode*) connection.output_node)->DeleteConnection(connection);
-                        ((MyNode*) connection.input_node)->DeleteConnection(connection);
                     }
                 }
+                // Then we delete our own connections, so we don't corrupt the list
+                node->connections.clear();
+                
                 delete node;
                 it = nodes.erase(it);
             }
