@@ -124,7 +124,7 @@ void ShowDemoWindow(bool*)
     static ImNodes::CanvasState canvas{};
 
     const ImGuiStyle& style = ImGui::GetStyle();
-    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::BeginCanvas(&canvas);

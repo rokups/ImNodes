@@ -222,38 +222,56 @@ void BeginCanvas(CanvasState* canvas)
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGuiIO& io = ImGui::GetIO();
 
+    // initialize contents_rect to the current window viewport
+    canvas->contents_rect = ImRect(canvas->rect.Min + w->Scroll, canvas->rect.Min + w->Scroll + w->InnerClipRect.GetSize() );//ImRect(0,0,0,0);
+
     if (!ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
     {
         if (ImGui::IsMouseDragging(1))
-            canvas->offset += io.MouseDelta;
+        {
+            // handle edges of canvas and increase it
+            if (w->Scroll.x == 0.f && io.MouseDelta.x > 0.f )
+                canvas->rect.Min.x -= io.MouseDelta.x;
+            if (w->Scroll.y == 0.f && io.MouseDelta.y > 0.f )
+                canvas->rect.Min.y -= io.MouseDelta.y;
+            if (w->Scroll.x == w->ScrollMax.x && io.MouseDelta.x < 0.f )
+                canvas->rect.Max.x -= io.MouseDelta.x;
+            if ( w->Scroll.y == w->ScrollMax.y && io.MouseDelta.y < 0.)
+                canvas->rect.Max.y -= io.MouseDelta.y;
+
+            ImVec2 s = w->Scroll - io.MouseDelta;
+            ImGui::SetScrollX(s.x);
+            ImGui::SetScrollY(s.y);
+            canvas->contents_rect.Translate(io.MouseDelta*-1);
+        }
 
         if (io.KeyShift && !io.KeyCtrl)
-            canvas->offset.x += io.MouseWheel * 16.0f;
+            ImGui::SetScrollX( ImGui::GetScrollX() + io.MouseWheel * -16.0f);
 
-        if (!io.KeyShift && !io.KeyCtrl)
-            canvas->offset.y += io.MouseWheel * 16.0f;
+        if (!io.KeyShift && !io.KeyCtrl && io.MouseWheel != 0.f )
+            ImGui::SetScrollY( ImGui::GetScrollY() + io.MouseWheel * -16.0f);
 
         if (!io.KeyShift && io.KeyCtrl)
         {
             if (io.MouseWheel != 0)
                 canvas->zoom = ImClamp(canvas->zoom + io.MouseWheel * canvas->zoom / 16.f, 0.3f, 3.f);
-            canvas->offset += ImGui::GetMouseDragDelta();
         }
     }
 
     const float grid = 64.0f * canvas->zoom;
 
-    ImVec2 pos = ImGui::GetWindowPos();
-    ImVec2 size = ImGui::GetWindowSize();
+    ImVec2 pos = w->ClipRect.Min;
+    ImVec2 size = w->ClipRect.GetSize();
+    ImVec2 canvas_offset = canvas->contents_rect.Min; // same as viewport's min
 
     ImU32 grid_color = ImColor(canvas->colors[ColCanvasLines]);
-    for (float x = fmodf(canvas->offset.x, grid); x < size.x;)
+    for (float x = fmodf(-canvas_offset.x, grid); x < size.x;)
     {
         draw_list->AddLine(ImVec2(x, 0) + pos, ImVec2(x, size.y) + pos, grid_color);
         x += grid;
     }
 
-    for (float y = fmodf(canvas->offset.y, grid); y < size.y;)
+    for (float y = fmodf(-canvas_offset.y, grid); y < size.y;)
     {
         draw_list->AddLine(ImVec2(0, y) + pos, ImVec2(size.x, y) + pos, grid_color);
         y += grid;
@@ -267,9 +285,22 @@ void EndCanvas()
     assert(gCanvas != nullptr);     // Did you forget calling BeginCanvas()?
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    const ImGuiWindow* w = ImGui::GetCurrentWindow();
     auto* canvas = gCanvas;
     auto* impl = canvas->_impl;
     const ImGuiStyle& style = ImGui::GetStyle();
+
+    // set the size of the canvas if it's smaller than the content region
+    ImVec2 csize = canvas->rect.GetSize();
+    ImVec2 wsize = w->InnerClipRect.GetSize();
+    if ( csize.x < wsize.x )
+        canvas->rect.Max.x = canvas->rect.Min.x + wsize.x;
+    if ( csize.y < wsize.y )
+        canvas->rect.Max.y = canvas->rect.Min.y + wsize.y;
+    // set the cursor to the maximum canvas position so imgui knows where to put scrollbars
+    ImGui::SetCursorPos(canvas->contents_rect.GetSize());
+    // switch canvas->rect to the contents_rect to enable shrinking it
+    canvas->rect = canvas->contents_rect;
 
     // Draw pending connection
     if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
@@ -379,6 +410,7 @@ bool BeginNode(void* node_id, ImVec2* pos, bool* selected)
     assert(pos != nullptr);
     assert(selected != nullptr);
     const ImGuiStyle& style = ImGui::GetStyle();
+    const ImGuiWindow* w = ImGui::GetCurrentWindow();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
     auto* impl = canvas->_impl;
@@ -399,7 +431,7 @@ bool BeginNode(void* node_id, ImVec2* pos, bool* selected)
     else
     {
         // Top-let corner of the node
-        ImGui::SetCursorScreenPos(ImGui::GetWindowPos() + (*pos) * canvas->zoom + canvas->offset);
+        ImGui::SetCursorScreenPos(w->InnerClipRect.Min - w->Scroll + (*pos) * canvas->zoom - canvas->rect.Min);
     }
 
     ImGui::PushID(node_id);
@@ -428,6 +460,10 @@ void EndNode()
         ImGui::GetItemRectMin() - style.ItemInnerSpacing * canvas->zoom,
         ImGui::GetItemRectMax() + style.ItemInnerSpacing * canvas->zoom
     };
+
+    // add the node rect to the canvas content_rect, used to determine occupied canvas area
+    canvas->contents_rect.Min = ImMin(canvas->contents_rect.Min, node_pos);
+    canvas->contents_rect.Max = ImMax(canvas->contents_rect.Max, node_pos + node_rect.GetSize());
 
     // Render frame
     draw_list->ChannelsSetCurrent(0);
@@ -494,7 +530,7 @@ void EndNode()
         {
             // Upon node creation we would like it to be positioned at the center of mouse cursor. This can be done only
             // once widget dimensions are known at the end of rendering and thus on the next frame.
-            node_pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->Pos - canvas->offset - (node_rect.GetSize() / 2);
+            node_pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->InnerClipRect.Min + ImGui::GetCurrentWindow()->Scroll + canvas->rect.Min - (node_rect.GetSize() / 2);
             impl->auto_position_node_id = nullptr;
         }
         break;

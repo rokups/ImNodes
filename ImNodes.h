@@ -56,8 +56,10 @@ struct IMGUI_API CanvasState
 {
     /// Current zoom of canvas.
     float zoom = 1.0;
-    /// Current scroll offset of canvas.
-    ImVec2 offset{};
+    /// Contents rectangle of canvas
+    ImRect rect = { 0.f, 0.f, 0.f, 0.f };
+    /// Occupied contents rectangle of canvas
+    ImRect contents_rect {};
     /// Colors used to style elements of this canvas.
     ImColor colors[StyleColor::ColMax];
     /// Style parameters
