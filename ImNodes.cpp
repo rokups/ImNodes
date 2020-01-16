@@ -224,7 +224,7 @@ void BeginCanvas(CanvasState* canvas)
 
     if (!ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
     {
-        if (ImGui::IsMouseDragging(1))
+        if (ImGui::IsMouseDragging(2))
             canvas->offset += io.MouseDelta;
 
         if (io.KeyShift && !io.KeyCtrl)
@@ -236,8 +236,13 @@ void BeginCanvas(CanvasState* canvas)
         if (!io.KeyShift && io.KeyCtrl)
         {
             if (io.MouseWheel != 0)
+            {
+                ImVec2 mouseRel = ImVec2{ ImGui::GetMousePos().x - ImGui::GetWindowPos().x, ImGui::GetMousePos().y - ImGui::GetWindowPos().y };
+                float prevZoom = canvas->zoom;
                 canvas->zoom = ImClamp(canvas->zoom + io.MouseWheel * canvas->zoom / 16.f, 0.3f, 3.f);
-            canvas->offset += ImGui::GetMouseDragDelta();
+                float zoomFactor = (prevZoom - canvas->zoom) / prevZoom;
+                canvas->offset += (mouseRel - canvas->offset) * zoomFactor;
+            }
         }
     }
 
@@ -494,7 +499,7 @@ void EndNode()
         {
             // Upon node creation we would like it to be positioned at the center of mouse cursor. This can be done only
             // once widget dimensions are known at the end of rendering and thus on the next frame.
-            node_pos = ImGui::GetMousePos() - ImGui::GetCurrentWindow()->Pos - canvas->offset - (node_rect.GetSize() / 2);
+            node_pos = (ImGui::GetMousePos() - ImGui::GetCurrentWindow()->Pos) / canvas->zoom - canvas->offset - (node_rect.GetSize() / 2);
             impl->auto_position_node_id = nullptr;
         }
         break;
