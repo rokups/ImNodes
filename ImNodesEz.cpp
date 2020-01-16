@@ -90,6 +90,15 @@ bool Slot(const char* title, int kind)
         {
             // Align output slots to the right edge of the node.
             ImGuiID max_width_id = ImGui::GetID("output-max-title-width");
+
+			// Reset max width if zoom has changed
+            ImGuiID canvas_zoom = ImGui::GetID("canvas-zoom");
+            if (storage->GetFloat(canvas_zoom, gCanvas->zoom) != gCanvas->zoom)
+            {
+                storage->SetFloat(max_width_id, 0.0f);
+            }
+            storage->SetFloat(canvas_zoom, gCanvas->zoom);
+
             float output_max_title_width = ImMax(storage->GetFloat(max_width_id, title_size.x), title_size.x);
             storage->SetFloat(max_width_id, output_max_title_width);
             float offset = (output_max_title_width + style.ItemSpacing.x) - title_size.x;
