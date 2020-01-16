@@ -91,7 +91,7 @@ bool Slot(const char* title, int kind)
             // Align output slots to the right edge of the node.
             ImGuiID max_width_id = ImGui::GetID("output-max-title-width");
 
-			// Reset max width if zoom has changed
+            // Reset max width if zoom has changed
             ImGuiID canvas_zoom = ImGui::GetID("canvas-zoom");
             if (storage->GetFloat(canvas_zoom, gCanvas->zoom) != gCanvas->zoom)
             {
