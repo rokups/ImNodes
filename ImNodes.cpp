@@ -231,7 +231,10 @@ void BeginCanvas(CanvasState* canvas)
             canvas->offset.x += io.MouseWheel * 16.0f;
 
         if (!io.KeyShift && !io.KeyCtrl)
+        {
             canvas->offset.y += io.MouseWheel * 16.0f;
+            canvas->offset.x += io.MouseWheelH * 16.0f;
+        }
 
         if (!io.KeyShift && io.KeyCtrl)
         {
