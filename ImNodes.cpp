@@ -192,21 +192,10 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
     ImVec2 p2 = input_pos - ImVec2{100 * canvas->zoom, 0};
     ImVec2 p3 = output_pos + ImVec2{100 * canvas->zoom, 0};
 
-    // Assemble segments for path
-    draw_list->PathLineTo(input_pos);
-    draw_list->PathBezierCurveTo(p2, p3, output_pos, 0);
-
-    // Check each segment and determine if mouse is hovering curve that is to be drawn
-    float min_square_distance = FLT_MAX;
-    for (int i = 0; i < draw_list->_Path.size() - 1; i++)
-    {
-        min_square_distance = ImMin(min_square_distance,
-            GetDistanceToLineSquared(ImGui::GetMousePos(), draw_list->_Path[i], draw_list->_Path[i + 1]));
-    }
-
-    // Draw curve, change when it is hovered
+    ImVec2 closest_pt = ImBezierClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationTol);
+    float min_square_distance = ImFabs(ImLengthSqr(ImGui::GetMousePos() - closest_pt));
     bool is_close = min_square_distance <= thickness * thickness;
-    draw_list->PathStroke(is_close ? canvas->colors[ColConnectionActive] : canvas->colors[ColConnection], false, thickness);
+    draw_list->AddBezierCurve(input_pos, p2, p3, output_pos, is_close ? canvas->colors[ColConnectionActive] : canvas->colors[ColConnection], thickness, 0);
     return is_close;
 }
 
@@ -217,7 +206,7 @@ void BeginCanvas(CanvasState* canvas)
     const ImGuiWindow* w = ImGui::GetCurrentWindow();
     ImGui::PushID(canvas);
 
-    ImGui::ItemAdd(w->ContentsRegionRect, ImGui::GetID("canvas"));
+    ImGui::ItemAdd(w->ContentRegionRect, ImGui::GetID("canvas"));
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGuiIO& io = ImGui::GetIO();
@@ -321,7 +310,7 @@ void EndCanvas()
     case State_None:
     {
         ImGuiID canvas_id = ImGui::GetID("canvas");
-        if (ImGui::IsMouseDown(0) && ImGui::GetCurrentWindow()->ContentsRegionRect.Contains(ImGui::GetMousePos()))
+        if (ImGui::IsMouseDown(0) && ImGui::GetCurrentWindow()->ContentRegionRect.Contains(ImGui::GetMousePos()))
         {
             if (ImGui::IsWindowHovered())
             {
