@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.1)
 project(ImNodes)
 
 set(CMAKE_CXX_STANDARD 14)
-set(IMNODES_IMGUI_VERSION "1.75" CACHE STRING "ImGui version to use for building sample,")
+set(IMNODES_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use for building sample,")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
