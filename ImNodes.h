@@ -57,18 +57,18 @@ struct IMGUI_API CanvasState
     /// Current zoom of canvas.
     float zoom = 1.0;
     /// Current scroll offset of canvas.
-    ImVec2 offset{};
+    ImVec2 offset;
     /// Colors used to style elements of this canvas.
     ImColor colors[StyleColor::ColMax];
     /// Style parameters
-    struct
+    struct style_
     {
         /// Thickness of curves that connect slots together.
         float curve_thickness = 5.f;
         /// Indent connection into slot widget a little. Useful when slot content covers connection end with some kind
         /// of icon (like a circle) and then no seam between icon and connection end is visible.
         float connection_indent = 1.f;
-    } style{};
+    } style;
     /// Implementation detail.
     _CanvasStateImpl* _impl = nullptr;
 
