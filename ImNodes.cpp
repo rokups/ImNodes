@@ -829,7 +829,7 @@ bool IsConnectingCompatibleSlot()
         for (int i = 0; i < impl->ignore_connections.size(); i++)
         {
             const _IgnoreSlot& ignored = impl->ignore_connections[i];
-            if (ignored.node_id == impl->node.id && strcmp(ignored.slot_name, ignored.slot_name) == 0 &&
+            if (ignored.node_id == impl->node.id && strcmp(ignored.slot_name, impl->slot.title) == 0 &&
                 IsInputSlotKind(ignored.slot_kind) == IsInputSlotKind(impl->slot.kind))
                 return false;
         }
