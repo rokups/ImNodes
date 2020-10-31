@@ -61,7 +61,7 @@ struct IMGUI_API CanvasState
     /// Colors used to style elements of this canvas.
     ImColor colors[StyleColor::ColMax];
     /// Style parameters
-    struct Style
+    struct CanvasStyle
     {
         /// Thickness of curves that connect slots together.
         float curve_thickness = 5.f;
