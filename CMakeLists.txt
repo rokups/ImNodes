@@ -24,10 +24,7 @@ cmake_minimum_required(VERSION 3.1)
 project(ImNodes)
 
 set(CMAKE_CXX_STANDARD 14)
-set(IMNODES_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use for building sample,")
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2)
+set(IMNODES_IMGUI_VERSION "v1.80" CACHE STRING "ImGui version to use for building sample,")
 
 if (NOT IMGUI_DIR)
     if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -38,7 +35,7 @@ if (NOT IMGUI_DIR)
         # independently. These are not necessary when user is consuming library in their
         # own project.
         if (NOT EXISTS "${IMGUI_DIR}.zip")
-            file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v${IMNODES_IMGUI_VERSION}.zip" ${IMGUI_DIR}.zip)
+            file(DOWNLOAD "https://github.com/ocornut/imgui/archive/${IMNODES_IMGUI_VERSION}.zip" ${IMGUI_DIR}.zip)
         endif ()
         if (NOT EXISTS "${IMGUI_DIR}")
             execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${IMGUI_DIR}.zip)
@@ -46,38 +43,31 @@ if (NOT IMGUI_DIR)
     endif ()
 endif ()
 
-if (UNIX)
-    add_executable(ImNodes
-        ${IMGUI_DIR}/examples/example_sdl_opengl3/main.cpp
-        ${IMGUI_DIR}/examples/imgui_impl_opengl3.cpp
-        ${IMGUI_DIR}/examples/imgui_impl_opengl3.h
-        ${IMGUI_DIR}/examples/imgui_impl_sdl.cpp
-        ${IMGUI_DIR}/examples/imgui_impl_sdl.h
-        ${IMGUI_DIR}/imconfig.h
-        ${IMGUI_DIR}/imgui.cpp
-        ${IMGUI_DIR}/imgui.h
-        ${IMGUI_DIR}/imgui_draw.cpp
-        ${IMGUI_DIR}/imgui_widgets.cpp
-        ${IMGUI_DIR}/imgui_internal.h
-        ${IMGUI_DIR}/imstb_rectpack.h
-        ${IMGUI_DIR}/imstb_textedit.h
-        ${IMGUI_DIR}/imstb_truetype.h
-        ${IMGUI_DIR}/examples/libs/gl3w/GL/gl3w.c
-        ${IMGUI_DIR}/examples/libs/gl3w/GL/gl3w.h
-        ${IMGUI_DIR}/examples/libs/gl3w/GL/glcorearb.h
-        ImNodes.h
-        ImNodes.cpp
-        ImNodesEz.h
-        ImNodesEz.cpp
-        sample.cpp
-    )
-    target_include_directories(ImNodes PUBLIC
-        ${SDL2_INCLUDE_DIRS}
-        ${IMGUI_DIR}
-        ${IMGUI_DIR}/examples
-        ${IMGUI_DIR}/examples/libs/gl3w
-    )
-    target_link_libraries(ImNodes PUBLIC ${SDL2_LIBRARIES} -ldl -lGL)
-    target_compile_options(ImNodes PUBLIC ${SDL2_CFLAGS_OTHER})
-    target_compile_definitions(ImNodes PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1 -DIMGUI_IMPL_OPENGL_LOADER_GL3W=1)
+if (NOT EXISTS "${IMGUI_DIR}/CMakeLists.txt")
+    file(DOWNLOAD "https://gist.githubusercontent.com/rokups/f771217b2d530d170db5cb1e08e9a8f4/raw/b714a5c8208a57a2ed43ac7d38026bc5fb5bbbf0/CMakeLists.txt" "${IMGUI_DIR}/CMakeLists.txt")
+endif ()
+
+set(IMGUI_DISABLE_OBSOLETE_FUNCTIONS ON)
+add_subdirectory(${IMGUI_DIR})
+
+add_executable(ImNodes
+    ImNodes.h
+    ImNodes.cpp
+    ImNodesEz.h
+    ImNodesEz.cpp
+    sample.cpp
+)
+
+target_link_libraries(ImNodes PRIVATE imgui)
+if (TARGET imgui-sdl)
+    target_link_libraries(ImNodes PRIVATE imgui-opengl3 imgui-sdl)
+    target_sources(ImNodes PRIVATE ${IMGUI_DIR}/examples/example_sdl_opengl3/main.cpp)
+elseif (TARGET imgui-glfw)
+    target_link_libraries(ImNodes PRIVATE imgui-opengl3 imgui-glfw)
+    target_sources(ImNodes PRIVATE ${IMGUI_DIR}/examples/example_glfw_opengl3/main.cpp)
+elseif (TARGET imgui-dx11)
+    target_link_libraries(ImNodes PRIVATE imgui-dx11 imgui-win32)
+    target_sources(ImNodes PRIVATE ${IMGUI_DIR}/examples/example_win32_directx11/main.cpp)
+else ()
+    message(FATAL_ERROR "No suitable backend found.")
 endif ()
