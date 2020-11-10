@@ -27,26 +27,27 @@
 #include <map>
 #include <string>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include "ImNodesEz.h"
 
 /// A structure defining a connection between two slots of two nodes.
 struct Connection
 {
     /// `id` that was passed to BeginNode() of input node.
-    void* input_node = nullptr;
+    void* InputNode = nullptr;
     /// Descriptor of input slot.
-    const char* input_slot = nullptr;
+    const char* InputSlot = nullptr;
     /// `id` that was passed to BeginNode() of output node.
-    void* output_node = nullptr;
+    void* OutputNode = nullptr;
     /// Descriptor of output slot.
-    const char* output_slot = nullptr;
+    const char* OutputSlot = nullptr;
 
     bool operator==(const Connection& other) const
     {
-        return input_node == other.input_node &&
-               input_slot == other.input_slot &&
-               output_node == other.output_node &&
-               output_slot == other.output_slot;
+        return InputNode == other.InputNode &&
+               InputSlot == other.InputSlot &&
+               OutputNode == other.OutputNode &&
+               OutputSlot == other.OutputSlot;
     }
 
     bool operator!=(const Connection& other) const
@@ -66,35 +67,35 @@ enum NodeSlotTypes
 struct MyNode
 {
     /// Title which will be displayed at the center-top of the node.
-    const char* title = nullptr;
+    const char* Title = nullptr;
     /// Flag indicating that node is selected by the user.
-    bool selected = false;
+    bool Selected = false;
     /// Node position on the canvas.
-    ImVec2 pos{};
+    ImVec2 Pos{};
     /// List of node connections.
-    std::vector<Connection> connections{};
+    std::vector<Connection> Connections{};
     /// A list of input slots current node has.
-    std::vector<ImNodes::Ez::SlotInfo> input_slots{};
+    std::vector<ImNodes::Ez::SlotInfo> InputSlots{};
     /// A list of output slots current node has.
-    std::vector<ImNodes::Ez::SlotInfo> output_slots{};
+    std::vector<ImNodes::Ez::SlotInfo> OutputSlots{};
 
     explicit MyNode(const char* title,
         const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
         const std::vector<ImNodes::Ez::SlotInfo>&& output_slots)
     {
-        this->title = title;
-        this->input_slots = input_slots;
-        this->output_slots = output_slots;
+        Title = title;
+        InputSlots = input_slots;
+        OutputSlots = output_slots;
     }
 
     /// Deletes connection from this node.
     void DeleteConnection(const Connection& connection)
     {
-        for (auto it = connections.begin(); it != connections.end(); ++it)
+        for (auto it = Connections.begin(); it != Connections.end(); ++it)
         {
             if (connection == *it)
             {
-                connections.erase(it);
+                Connections.erase(it);
                 break;
             }
         }
@@ -133,63 +134,63 @@ void ShowDemoWindow(bool*)
             MyNode* node = *it;
 
             // Start rendering node
-            if (ImNodes::Ez::BeginNode(node, node->title, &node->pos, &node->selected))
+            if (ImNodes::Ez::BeginNode(node, node->Title, &node->Pos, &node->Selected))
             {
                 // Render input nodes first (order is important)
-                ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
+                ImNodes::Ez::InputSlots(node->InputSlots.data(), node->InputSlots.size());
 
                 // Custom node content may go here
-                ImGui::Text("Content of %s", node->title);
+                ImGui::Text("Content of %s", node->Title);
 
                 // Render output nodes first (order is important)
-                ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
+                ImNodes::Ez::OutputSlots(node->OutputSlots.data(), node->OutputSlots.size());
 
                 // Store new connections when they are created
                 Connection new_connection;
-                if (ImNodes::GetNewConnection(&new_connection.input_node, &new_connection.input_slot,
-                    &new_connection.output_node, &new_connection.output_slot))
+                if (ImNodes::GetNewConnection(&new_connection.InputNode, &new_connection.InputSlot,
+                                              &new_connection.OutputNode, &new_connection.OutputSlot))
                 {
-                    ((MyNode*) new_connection.input_node)->connections.push_back(new_connection);
-                    ((MyNode*) new_connection.output_node)->connections.push_back(new_connection);
+                    ((MyNode*) new_connection.InputNode)->Connections.push_back(new_connection);
+                    ((MyNode*) new_connection.OutputNode)->Connections.push_back(new_connection);
                 }
 
                 // Render output connections of this node
-                for (const Connection& connection : node->connections)
+                for (const Connection& connection : node->Connections)
                 {
                     // Node contains all it's connections (both from output and to input slots). This means that multiple
                     // nodes will have same connection. We render only output connections and ensure that each connection
                     // will be rendered once.
-                    if (connection.output_node != node)
+                    if (connection.OutputNode != node)
                         continue;
 
-                    if (!ImNodes::Connection(connection.input_node, connection.input_slot, connection.output_node,
-                        connection.output_slot))
+                    if (!ImNodes::Connection(connection.InputNode, connection.InputSlot, connection.OutputNode,
+                                             connection.OutputSlot))
                     {
                         // Remove deleted connections
-                        ((MyNode*) connection.input_node)->DeleteConnection(connection);
-                        ((MyNode*) connection.output_node)->DeleteConnection(connection);
+                        ((MyNode*) connection.InputNode)->DeleteConnection(connection);
+                        ((MyNode*) connection.OutputNode)->DeleteConnection(connection);
                     }
                 }
             }
             // Node rendering is done. This call will render node background based on size of content inside node.
             ImNodes::Ez::EndNode();
 
-            if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
+            if (node->Selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
             {
                 // Deletion order is critical: first we delete connections to us
-                for (auto& connection : node->connections)
+                for (auto& connection : node->Connections)
                 {
-                    if (connection.output_node == node)
+                    if (connection.OutputNode == node)
                     {
-                        ((MyNode*) connection.input_node)->DeleteConnection(connection);
+                        ((MyNode*) connection.InputNode)->DeleteConnection(connection);
                     }
                     else
                     {
-                        ((MyNode*) connection.output_node)->DeleteConnection(connection);
+                        ((MyNode*) connection.OutputNode)->DeleteConnection(connection);
                     }
                 }
                 // Then we delete our own connections, so we don't corrupt the list
-                node->connections.clear();
+                node->Connections.clear();
                 
                 delete node;
                 it = nodes.erase(it);
@@ -217,7 +218,7 @@ void ShowDemoWindow(bool*)
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Reset Zoom"))
-                canvas.zoom = 1;
+                canvas.Zoom = 1;
 
             if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
                 ImGui::CloseCurrentPopup();

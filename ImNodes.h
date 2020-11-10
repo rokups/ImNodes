@@ -24,8 +24,6 @@
 
 
 #include <imgui.h>
-#include <imgui_internal.h>
-#include <limits>
 
 //
 // Appearance can be styled by altering ImGui style before calls to ImNodes::*,
@@ -55,22 +53,22 @@ struct _CanvasStateImpl;
 struct IMGUI_API CanvasState
 {
     /// Current zoom of canvas.
-    float zoom = 1.0;
+    float Zoom = 1.0;
     /// Current scroll offset of canvas.
-    ImVec2 offset;
+    ImVec2 Offset;
     /// Colors used to style elements of this canvas.
-    ImColor colors[StyleColor::ColMax];
+    ImColor Colors[StyleColor::ColMax];
     /// Style parameters
     struct CanvasStyle
     {
         /// Thickness of curves that connect slots together.
-        float curve_thickness = 5.f;
+        float CurveThickness = 5.0f;
         /// Indent connection into slot widget a little. Useful when slot content covers connection end with some kind
         /// of icon (like a circle) and then no seam between icon and connection end is visible.
-        float connection_indent = 1.f;
-    } style;
+        float ConnectionIndent = 1.0f;
+    } Style;
     /// Implementation detail.
-    _CanvasStateImpl* _impl = nullptr;
+    _CanvasStateImpl* _Impl = nullptr;
 
     CanvasState() noexcept;
     ~CanvasState();

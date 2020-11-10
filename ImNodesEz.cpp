@@ -24,6 +24,8 @@
 #endif
 #include "ImNodesEz.h"
 
+#include <imgui_internal.h>
+
 namespace ImNodes
 {
 
@@ -66,10 +68,10 @@ bool Slot(const char* title, int kind)
 {
     auto* storage = ImGui::GetStateStorage();
     const auto& style = ImGui::GetStyle();
-    const float CIRCLE_RADIUS = 5.f * gCanvas->zoom;
+    const float CIRCLE_RADIUS = 5.f * gCanvas->Zoom;
     ImVec2 title_size = ImGui::CalcTextSize(title);
     // Pull entire slot a little bit out of the edge so that curves connect into int without visible seams
-    float item_offset_x = style.ItemSpacing.x * gCanvas->zoom;
+    float item_offset_x = style.ItemSpacing.x * gCanvas->Zoom;
     if (!ImNodes::IsOutputSlotKind(kind))
         item_offset_x = -item_offset_x;
     ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2{item_offset_x, 0});
@@ -82,7 +84,7 @@ bool Slot(const char* title, int kind)
         bool is_active = ImNodes::IsSlotCurveHovered() ||
                          (ImNodes::IsConnectingCompatibleSlot() /*&& !IsAlreadyConnectedWithPendingConnection(title, kind)*/);
 
-        ImColor color = gCanvas->colors[is_active ? ImNodes::ColConnectionActive : ImNodes::ColConnection];
+        ImColor color = gCanvas->Colors[is_active ? ImNodes::ColConnectionActive : ImNodes::ColConnection];
 
         ImGui::PushStyleColor(ImGuiCol_Text, color.Value);
 
@@ -93,11 +95,11 @@ bool Slot(const char* title, int kind)
 
             // Reset max width if zoom has changed
             ImGuiID canvas_zoom = ImGui::GetID("canvas-zoom");
-            if (storage->GetFloat(canvas_zoom, gCanvas->zoom) != gCanvas->zoom)
+            if (storage->GetFloat(canvas_zoom, gCanvas->Zoom) != gCanvas->Zoom)
             {
                 storage->SetFloat(max_width_id, 0.0f);
             }
-            storage->SetFloat(canvas_zoom, gCanvas->zoom);
+            storage->SetFloat(canvas_zoom, gCanvas->Zoom);
 
             float output_max_title_width = ImMax(storage->GetFloat(max_width_id, title_size.x), title_size.x);
             storage->SetFloat(max_width_id, output_max_title_width);
