@@ -198,7 +198,11 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
 #endif
     float min_square_distance = ImFabs(ImLengthSqr(ImGui::GetMousePos() - closest_pt));
     bool is_close = min_square_distance <= thickness * thickness;
+#if IMGUI_VERSION_NUM < 18000
     draw_list->AddBezierCurve(input_pos, p2, p3, output_pos, is_close ? canvas->colors[ColConnectionActive] : canvas->colors[ColConnection], thickness, 0);
+#else
+    draw_list->AddBezierCubic(input_pos, p2, p3, output_pos, is_close ? canvas->colors[ColConnectionActive] : canvas->colors[ColConnection], thickness, 0);
+#endif
     return is_close;
 }
 
