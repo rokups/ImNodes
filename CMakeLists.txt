@@ -50,6 +50,11 @@ endif ()
 set(IMGUI_DISABLE_OBSOLETE_FUNCTIONS ON)
 add_subdirectory(${IMGUI_DIR})
 
+# Warnings.
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra -Werror -Wunused-parameter -Wformat $<$<COMPILE_LANGUAGE:CXX>:-pedantic>)
+endif ()
+
 add_executable(ImNodes
     ImNodes.h
     ImNodes.cpp

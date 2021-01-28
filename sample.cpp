@@ -124,7 +124,6 @@ void ShowDemoWindow(bool*)
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
     static ImNodes::CanvasState canvas{};
 
-    const ImGuiStyle& style = ImGui::GetStyle();
     if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
@@ -199,7 +198,6 @@ void ShowDemoWindow(bool*)
                 ++it;
         }
 
-        const ImGuiIO& io = ImGui::GetIO();
         if (ImGui::IsMouseReleased(1) && ImGui::IsWindowHovered() && !ImGui::IsMouseDragging(1))
         {
             ImGui::FocusWindow(ImGui::GetCurrentWindow());

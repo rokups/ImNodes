@@ -276,7 +276,6 @@ void EndCanvas()
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
     auto* impl = canvas->_Impl;
-    const ImGuiStyle& style = ImGui::GetStyle();
 
     // Draw pending connection
     if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
@@ -572,7 +571,7 @@ bool GetNewConnection(void** input_node, const char** input_slot_title, void** o
         *input_slot_title = impl->NewConnection.InputSlot;
         *output_node = impl->NewConnection.OutputNode;
         *output_slot_title = impl->NewConnection.OutputSlot;
-        memset(&impl->NewConnection, 0, sizeof(impl->NewConnection));
+        impl->NewConnection = {};
         return true;
     }
 
@@ -696,7 +695,6 @@ bool BeginSlot(const char* title, int kind)
 
 void EndSlot()
 {
-    const ImGuiStyle& style = ImGui::GetStyle();
     auto* canvas = gCanvas;
     auto* impl = canvas->_Impl;
 
