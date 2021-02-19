@@ -71,7 +71,7 @@ bool Slot(const char* title, int kind)
     const float CIRCLE_RADIUS = 5.f * gCanvas->Zoom;
     ImVec2 title_size = ImGui::CalcTextSize(title);
     // Pull entire slot a little bit out of the edge so that curves connect into int without visible seams
-    float item_offset_x = style.ItemSpacing.x * gCanvas->Zoom;
+    float item_offset_x = style.ItemInnerSpacing.x + CIRCLE_RADIUS;
     if (!ImNodes::IsOutputSlotKind(kind))
         item_offset_x = -item_offset_x;
     ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2{item_offset_x, 0});
@@ -103,7 +103,7 @@ bool Slot(const char* title, int kind)
 
             float output_max_title_width = ImMax(storage->GetFloat(max_width_id, title_size.x), title_size.x);
             storage->SetFloat(max_width_id, output_max_title_width);
-            float offset = (output_max_title_width + style.ItemSpacing.x) - title_size.x;
+            float offset = (output_max_title_width + style.ItemInnerSpacing.x) - title_size.x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 
             ImGui::TextUnformatted(title);
@@ -143,6 +143,9 @@ void InputSlots(const SlotInfo* slots, int snum)
 {
     const auto& style = ImGui::GetStyle();
 
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, style.ItemSpacing * gCanvas->Zoom);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, style.ItemInnerSpacing * gCanvas->Zoom);
+
     // Render input slots
     ImGui::BeginGroup();
     {
@@ -153,6 +156,8 @@ void InputSlots(const SlotInfo* slots, int snum)
 
     // Move cursor to the next column
     ImGui::SetCursorScreenPos({ImGui::GetItemRectMax().x + style.ItemSpacing.x, ImGui::GetItemRectMin().y});
+
+    ImGui::PopStyleVar(2);
 
     // Begin region for node content
     ImGui::BeginGroup();
@@ -165,6 +170,9 @@ void OutputSlots(const SlotInfo* slots, int snum)
     // End region of node content
     ImGui::EndGroup();
 
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, style.ItemSpacing * gCanvas->Zoom);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, style.ItemInnerSpacing * gCanvas->Zoom);
+
     // Render output slots in the next column
     ImGui::SetCursorScreenPos({ImGui::GetItemRectMax().x + style.ItemSpacing.x, ImGui::GetItemRectMin().y});
     ImGui::BeginGroup();
@@ -173,6 +181,8 @@ void OutputSlots(const SlotInfo* slots, int snum)
             ImNodes::Ez::Slot(slots[i].title, ImNodes::OutputSlotKind(slots[i].kind));
     }
     ImGui::EndGroup();
+
+    ImGui::PopStyleVar(2);
 }
 
 }
