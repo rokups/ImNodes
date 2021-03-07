@@ -119,6 +119,9 @@ bool Slot(const char* title, int kind, ImVec2 &pos)
 
         ImGui::PushStyleColor(ImGuiCol_Text, color.Value);
 
+        // Compensate for large slot circles.
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImMax(CIRCLE_RADIUS - title_size.y*0.5f, 0.0f));
+
         if (ImNodes::IsOutputSlotKind(kind))
         {
             float *max_width_next = storage->GetFloatRef(ImGui::GetID("output-max-title-width-next"));
