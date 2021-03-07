@@ -36,20 +36,52 @@ namespace Ez
 
 bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
 {
+    ImGuiStorage *storage = ImGui::GetStateStorage();
+    ImGuiStyle &style = ImGui::GetStyle();
+
     bool result = ImNodes::BeginNode(node_id, pos, selected);
 
-    auto* storage = ImGui::GetStateStorage();
-    float node_width = storage->GetFloat(ImGui::GetID("node-width"));
-    if (node_width > 0)
+    ImVec2 title_size = ImGui::CalcTextSize(title);
+    ImVec2 input_pos = ImGui::GetCursorScreenPos() + ImVec2{0, title_size.y + style.ItemSpacing.y * gCanvas->Zoom};
+
+    // Get widths from previous frame rendering.
+    float input_width = storage->GetFloat(ImGui::GetID("input-width"));
+    float content_width = storage->GetFloat(ImGui::GetID("content-width"));
+    float output_width = storage->GetFloat(ImGui::GetID("output-width"));
+    float body_width = input_width + content_width + output_width;
+
+    // Ignore this the first time the node is rendered since we don't know any widths yet.
+    if (body_width > 0)
     {
-        // Center node title
-        ImVec2 title_size = ImGui::CalcTextSize(title);
-        if (node_width > title_size.x)
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node_width / 2.f - title_size.x / 2.f);
+        float output_max_title_width_next = storage->GetFloat(ImGui::GetID("output-max-title-width-next"));
+        storage->SetFloat(ImGui::GetID("output-max-title-width"), output_max_title_width_next);
+        storage->SetFloat(ImGui::GetID("output-max-title-width-next"), 0);
+
+        body_width += 2*style.ItemSpacing.x * gCanvas->Zoom;
+        float body_spacing = 0;
+
+        if (body_width > title_size.x)
+        {
+            // Center node title
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + body_width*0.5f - title_size.x*0.5f);
+        }
+        else
+        {
+            // Calculate extra node body spacing, i.e. around content, needed due to wider title.
+            body_spacing = ((title_size.x - body_width)*0.5f);
+        }
+
+        float content_x = input_pos.x + input_width + style.ItemSpacing.x * gCanvas->Zoom + body_spacing;
+        float output_x = content_x + content_width + style.ItemSpacing.x * gCanvas->Zoom + body_spacing;
+        storage->SetFloat(ImGui::GetID("content-x"), content_x);
+        storage->SetFloat(ImGui::GetID("output-x"), output_x);
+        storage->SetFloat(ImGui::GetID("body-y"), input_pos.y);
     }
 
     // Render node title
     ImGui::TextUnformatted(title);
+
+    ImGui::SetCursorScreenPos(input_pos);
 
     ImGui::BeginGroup();
     return result;
@@ -57,24 +89,23 @@ bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
 
 void EndNode()
 {
-    // Store node width which is needed for centering title.
-    auto* storage = ImGui::GetStateStorage();
     ImGui::EndGroup();
-    storage->SetFloat(ImGui::GetID("node-width"), ImGui::GetItemRectSize().x);
     ImNodes::EndNode();
 }
 
-bool Slot(const char* title, int kind)
+bool Slot(const char* title, int kind, ImVec2 &pos)
 {
     auto* storage = ImGui::GetStateStorage();
     const auto& style = ImGui::GetStyle();
     const float CIRCLE_RADIUS = 5.f * gCanvas->Zoom;
     ImVec2 title_size = ImGui::CalcTextSize(title);
-    // Pull entire slot a little bit out of the edge so that curves connect into int without visible seams
+    // Pull entire slot a little bit out of the edge so that curves connect into it without visible seams
     float item_offset_x = style.ItemInnerSpacing.x + CIRCLE_RADIUS;
     if (!ImNodes::IsOutputSlotKind(kind))
         item_offset_x = -item_offset_x;
-    ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2{item_offset_x, 0});
+    ImGui::SetCursorScreenPos(pos + ImVec2{item_offset_x, 0 });
+
+    pos.y += ImMax(title_size.y, 2*CIRCLE_RADIUS) + style.ItemSpacing.y;
 
     if (ImNodes::BeginSlot(title, kind))
     {
@@ -90,20 +121,10 @@ bool Slot(const char* title, int kind)
 
         if (ImNodes::IsOutputSlotKind(kind))
         {
-            // Align output slots to the right edge of the node.
-            ImGuiID max_width_id = ImGui::GetID("output-max-title-width");
+            float *max_width_next = storage->GetFloatRef(ImGui::GetID("output-max-title-width-next"));
+            *max_width_next = ImMax(*max_width_next, title_size.x);
 
-            // Reset max width if zoom has changed
-            ImGuiID canvas_zoom = ImGui::GetID("canvas-zoom");
-            if (storage->GetFloat(canvas_zoom, gCanvas->Zoom) != gCanvas->Zoom)
-            {
-                storage->SetFloat(max_width_id, 0.0f);
-            }
-            storage->SetFloat(canvas_zoom, gCanvas->Zoom);
-
-            float output_max_title_width = ImMax(storage->GetFloat(max_width_id, title_size.x), title_size.x);
-            storage->SetFloat(max_width_id, output_max_title_width);
-            float offset = (output_max_title_width + style.ItemInnerSpacing.x) - title_size.x;
+            float offset = storage->GetFloat(ImGui::GetID("output-max-title-width"), title_size.x) - title_size.x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 
             ImGui::TextUnformatted(title);
@@ -141,21 +162,27 @@ bool Slot(const char* title, int kind)
 
 void InputSlots(const SlotInfo* slots, int snum)
 {
+    ImGuiStorage *storage = ImGui::GetStateStorage();
     const auto& style = ImGui::GetStyle();
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, style.ItemSpacing * gCanvas->Zoom);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, style.ItemInnerSpacing * gCanvas->Zoom);
 
+    // Get cursor screen position to be updated by slots as they are rendered.
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+
     // Render input slots
     ImGui::BeginGroup();
     {
         for (int i = 0; i < snum; i++)
-            ImNodes::Ez::Slot(slots[i].title, ImNodes::InputSlotKind(slots[i].kind));
+            ImNodes::Ez::Slot(slots[i].title, ImNodes::InputSlotKind(slots[i].kind), pos);
     }
     ImGui::EndGroup();
 
+    storage->SetFloat(ImGui::GetID("input-width"), ImGui::GetItemRectSize().x);
+
     // Move cursor to the next column
-    ImGui::SetCursorScreenPos({ImGui::GetItemRectMax().x + style.ItemSpacing.x, ImGui::GetItemRectMin().y});
+    ImGui::SetCursorScreenPos(ImVec2{storage->GetFloat(ImGui::GetID("content-x")), storage->GetFloat(ImGui::GetID("body-y"))});
 
     ImGui::PopStyleVar(2);
 
@@ -165,6 +192,7 @@ void InputSlots(const SlotInfo* slots, int snum)
 
 void OutputSlots(const SlotInfo* slots, int snum)
 {
+    ImGuiStorage *storage = ImGui::GetStateStorage();
     const auto& style = ImGui::GetStyle();
 
     // End region of node content
@@ -173,14 +201,23 @@ void OutputSlots(const SlotInfo* slots, int snum)
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, style.ItemSpacing * gCanvas->Zoom);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, style.ItemInnerSpacing * gCanvas->Zoom);
 
+    storage->SetFloat(ImGui::GetID("content-width"), ImGui::GetItemRectSize().x);
+
+    // Get cursor screen position to be updated by slots as they are rendered.
+    ImVec2 pos = ImVec2{storage->GetFloat(ImGui::GetID("output-x")), storage->GetFloat(ImGui::GetID("body-y"))};
+
+    // Set cursor screen position as it is recorded as the starting point in BeginGroup() for the item rect size.
+    ImGui::SetCursorScreenPos(pos);
+
     // Render output slots in the next column
-    ImGui::SetCursorScreenPos({ImGui::GetItemRectMax().x + style.ItemSpacing.x, ImGui::GetItemRectMin().y});
     ImGui::BeginGroup();
     {
         for (int i = 0; i < snum; i++)
-            ImNodes::Ez::Slot(slots[i].title, ImNodes::OutputSlotKind(slots[i].kind));
+            ImNodes::Ez::Slot(slots[i].title, ImNodes::OutputSlotKind(slots[i].kind), pos);
     }
     ImGui::EndGroup();
+
+    storage->SetFloat(ImGui::GetID("output-width"), ImGui::GetItemRectSize().x);
 
     ImGui::PopStyleVar(2);
 }
