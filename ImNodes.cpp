@@ -133,6 +133,9 @@ struct _CanvasStateImpl
     CanvasState* PrevCanvas = nullptr;
     /// A list of node/slot combos that can not connect to current pending connection.
     ImVector<_IgnoreSlot> IgnoreConnections{};
+    int PrevSelectCount = 0;
+    int CurrSelectCount = 0;
+    ImGuiID PendingActiveNodeId = 0;
 };
 
 CanvasState::CanvasState() noexcept
@@ -267,6 +270,9 @@ void BeginCanvas(CanvasState* canvas)
     }
 
     ImGui::SetWindowFontScale(canvas->Zoom);
+
+    canvas->_Impl->PrevSelectCount = canvas->_Impl->CurrSelectCount;
+    canvas->_Impl->CurrSelectCount = 0;
 }
 
 void EndCanvas()
@@ -313,6 +319,12 @@ void EndCanvas()
 
     if (impl->DoSelectionsFrame <= ImGui::GetCurrentContext()->FrameCount)
         impl->SingleSelectedNode = nullptr;
+
+    if (impl->PendingActiveNodeId != 0)
+    {
+        ImGui::SetActiveID(impl->PendingActiveNodeId, ImGui::GetCurrentWindow());
+        impl->PendingActiveNodeId = 0;
+    }
 
     switch (impl->State)
     {
@@ -447,12 +459,6 @@ void EndNode()
     ImGui::ItemSize(node_rect.GetSize());
     ImGui::ItemAdd(node_rect, node_item_id);
 
-    // Node is active when being dragged
-    if (ImGui::IsMouseDown(0) && !ImGui::IsAnyItemActive() && ImGui::IsItemHovered())
-        ImGui::SetActiveID(node_item_id, ImGui::GetCurrentWindow());
-    else if (!ImGui::IsMouseDown(0) && ImGui::IsItemActive())
-        ImGui::ClearActiveID();
-
     // Save last selection state in case we are about to start dragging multiple selected nodes
     if (ImGui::IsMouseClicked(0))
     {
@@ -474,16 +480,34 @@ void EndNode()
         else if (impl->DoSelectionsFrame == ImGui::GetCurrentContext()->FrameCount)
         {
             // Unselect other nodes when some node was left-clicked.
-            node_selected = impl->SingleSelectedNode == node_id;
+            if (impl->SingleSelectedNode == node_id)
+            {
+                // Toggle selection status unless this wasn't the only selected node on previous frame.
+                if (impl->PrevSelectCount > (node_selected ? 1 : 0))
+                    node_selected = true;
+                else
+                    node_selected ^= true;
+            }
+            else
+                node_selected = false;
         }
-        else if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::IsItemActive())
+        else if (ImGui::IsMouseDown(0) && !ImGui::IsAnyItemActive() && ImGui::IsItemHovered())
         {
-            node_selected ^= true;
-            if (!io.KeyCtrl && node_selected)
+            // Nodes are drawn from back to front, but the user interaction is rather front to back. Therefore the
+            // top-most of overlayed nodes will not be known until all nodes have been rendered. So we continuously
+            // save the potential top-most node and thus overwrite the previous candidate. The final top-most node
+            // is known once EndCanvas() is called.
+            impl->PendingActiveNodeId = node_item_id;
+        }
+        else if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered() && ImGui::IsItemActive())
+        {
+            if (!io.KeyCtrl)
             {
                 impl->SingleSelectedNode = node_id;
                 impl->DoSelectionsFrame = ImGui::GetCurrentContext()->FrameCount + 1;
             }
+            else
+                node_selected ^= true;
         }
         else if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0))
         {
@@ -550,6 +574,12 @@ void EndNode()
     }
 
     draw_list->ChannelsMerge();
+
+    if (!ImGui::IsMouseDown(0) && ImGui::IsItemActive())
+        ImGui::ClearActiveID();
+
+    if (node_selected)
+        impl->CurrSelectCount++;
 
     ImGui::PopID();     // id
 }
