@@ -34,15 +34,26 @@ extern CanvasState* gCanvas;
 namespace Ez
 {
 
+struct StyleVarMod
+{
+    ImNodesStyleVar Index;
+    float Value[2];
+    StyleVarMod(ImNodesStyleVar idx, float val)          { Index = idx; Value[0] = val; }
+    StyleVarMod(ImNodesStyleVar idx, const ImVec2 &val)  { Index = idx; Value[0] = val.x; Value[1] = val.y; }
+};
+
+static Style GStyle;
+static ImVector<StyleVarMod> GStyleVarStack;
+
+
 bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
 {
     ImGuiStorage *storage = ImGui::GetStateStorage();
-    ImGuiStyle &style = ImGui::GetStyle();
 
     bool result = ImNodes::BeginNode(node_id, pos, selected);
 
     ImVec2 title_size = ImGui::CalcTextSize(title);
-    ImVec2 input_pos = ImGui::GetCursorScreenPos() + ImVec2{0, title_size.y + style.ItemSpacing.y * gCanvas->Zoom};
+    ImVec2 input_pos = ImGui::GetCursorScreenPos() + ImVec2{0, title_size.y + GStyle.ItemSpacing.y * gCanvas->Zoom};
 
     // Get widths from previous frame rendering.
     float input_width = storage->GetFloat(ImGui::GetID("input-width"));
@@ -57,7 +68,7 @@ bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
         storage->SetFloat(ImGui::GetID("output-max-title-width"), output_max_title_width_next);
         storage->SetFloat(ImGui::GetID("output-max-title-width-next"), 0);
 
-        body_width += 2*style.ItemSpacing.x * gCanvas->Zoom;
+        body_width += 2*GStyle.ItemSpacing.x * gCanvas->Zoom;
         float body_spacing = 0;
 
         if (body_width > title_size.x)
@@ -71,8 +82,8 @@ bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
             body_spacing = ((title_size.x - body_width)*0.5f);
         }
 
-        float content_x = input_pos.x + input_width + style.ItemSpacing.x * gCanvas->Zoom + body_spacing;
-        float output_x = content_x + content_width + style.ItemSpacing.x * gCanvas->Zoom + body_spacing;
+        float content_x = input_pos.x + input_width + GStyle.ItemSpacing.x * gCanvas->Zoom + body_spacing;
+        float output_x = content_x + content_width + GStyle.ItemSpacing.x * gCanvas->Zoom + body_spacing;
         storage->SetFloat(ImGui::GetID("content-x"), content_x);
         storage->SetFloat(ImGui::GetID("output-x"), output_x);
         storage->SetFloat(ImGui::GetID("body-y"), input_pos.y);
@@ -96,16 +107,15 @@ void EndNode()
 bool Slot(const char* title, int kind, ImVec2 &pos)
 {
     auto* storage = ImGui::GetStateStorage();
-    const auto& style = ImGui::GetStyle();
-    const float CIRCLE_RADIUS = 5.f * gCanvas->Zoom;
+    const float CIRCLE_RADIUS = GStyle.SlotRadius * gCanvas->Zoom;
     ImVec2 title_size = ImGui::CalcTextSize(title);
     // Pull entire slot a little bit out of the edge so that curves connect into it without visible seams
-    float item_offset_x = style.ItemInnerSpacing.x + CIRCLE_RADIUS;
+    float item_offset_x = gCanvas->Style.NodeSpacing.x + CIRCLE_RADIUS;
     if (!ImNodes::IsOutputSlotKind(kind))
         item_offset_x = -item_offset_x;
     ImGui::SetCursorScreenPos(pos + ImVec2{item_offset_x, 0 });
 
-    pos.y += ImMax(title_size.y, 2*CIRCLE_RADIUS) + style.ItemSpacing.y;
+    pos.y += ImMax(title_size.y, 2*CIRCLE_RADIUS) + GStyle.ItemSpacing.y;
 
     if (ImNodes::BeginSlot(title, kind))
     {
@@ -131,7 +141,7 @@ bool Slot(const char* title, int kind, ImVec2 &pos)
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 
             ImGui::TextUnformatted(title);
-            ImGui::SameLine();
+            ImGui::SameLine(0.0f, GStyle.ItemSpacing.x);
         }
 
         ImRect circle_rect{
@@ -149,7 +159,7 @@ bool Slot(const char* title, int kind, ImVec2 &pos)
 
         if (ImNodes::IsInputSlotKind(kind))
         {
-            ImGui::SameLine();
+            ImGui::SameLine(0.0f, GStyle.ItemSpacing.x);
             ImGui::TextUnformatted(title);
         }
 
@@ -166,10 +176,9 @@ bool Slot(const char* title, int kind, ImVec2 &pos)
 void InputSlots(const SlotInfo* slots, int snum)
 {
     ImGuiStorage *storage = ImGui::GetStateStorage();
-    const auto& style = ImGui::GetStyle();
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, style.ItemSpacing * gCanvas->Zoom);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, style.ItemInnerSpacing * gCanvas->Zoom);
+    PushStyleVar(ImNodesStyleVar_ItemSpacing, GStyle.ItemSpacing * gCanvas->Zoom);
+    PushStyleVar(ImNodesStyleVar_NodeSpacing, gCanvas->Style.NodeSpacing * gCanvas->Zoom);
 
     // Get cursor screen position to be updated by slots as they are rendered.
     ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -187,7 +196,7 @@ void InputSlots(const SlotInfo* slots, int snum)
     // Move cursor to the next column
     ImGui::SetCursorScreenPos(ImVec2{storage->GetFloat(ImGui::GetID("content-x")), storage->GetFloat(ImGui::GetID("body-y"))});
 
-    ImGui::PopStyleVar(2);
+    PopStyleVar(2);
 
     // Begin region for node content
     ImGui::BeginGroup();
@@ -196,13 +205,12 @@ void InputSlots(const SlotInfo* slots, int snum)
 void OutputSlots(const SlotInfo* slots, int snum)
 {
     ImGuiStorage *storage = ImGui::GetStateStorage();
-    const auto& style = ImGui::GetStyle();
 
     // End region of node content
     ImGui::EndGroup();
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, style.ItemSpacing * gCanvas->Zoom);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, style.ItemInnerSpacing * gCanvas->Zoom);
+    PushStyleVar(ImNodesStyleVar_ItemSpacing, GStyle.ItemSpacing * gCanvas->Zoom);
+    PushStyleVar(ImNodesStyleVar_NodeSpacing, gCanvas->Style.NodeSpacing * gCanvas->Zoom);
 
     storage->SetFloat(ImGui::GetID("content-width"), ImGui::GetItemRectSize().x);
 
@@ -222,7 +230,61 @@ void OutputSlots(const SlotInfo* slots, int snum)
 
     storage->SetFloat(ImGui::GetID("output-width"), ImGui::GetItemRectSize().x);
 
-    ImGui::PopStyleVar(2);
+    PopStyleVar(2);
+}
+
+void PushStyleVar(ImNodesStyleVar idx, float val)
+{
+    IM_ASSERT(gCanvas != nullptr);
+    float *var;
+    switch (idx)
+    {
+    case ImNodesStyleVar_GridSpacing: var = &gCanvas->Style.GridSpacing; break;
+    case ImNodesStyleVar_CurveThickness: var = &gCanvas->Style.CurveThickness; break;
+    case ImNodesStyleVar_CurveStrength: var = &gCanvas->Style.CurveStrength; break;
+    case ImNodesStyleVar_SlotRadius: var = &GStyle.SlotRadius; break;
+    case ImNodesStyleVar_NodeRounding: var = &gCanvas->Style.NodeRounding; break;
+    default: IM_ASSERT(0 && "Called PushStyleVar() float variant but variable is not a float!");
+    }
+    GStyleVarStack.push_back(StyleVarMod(idx, *var));
+    *var = val;
+}
+
+void PushStyleVar(ImNodesStyleVar idx, const ImVec2& val)
+{
+    IM_ASSERT(gCanvas != nullptr);
+    ImVec2 *var;
+    switch (idx)
+    {
+    case ImNodesStyleVar_NodeSpacing: var = &gCanvas->Style.NodeSpacing; break;
+    case ImNodesStyleVar_ItemSpacing: var = &GStyle.ItemSpacing; break;
+    default: IM_ASSERT(0 && "Called PushStyleVar() ImVec2 variant but variable is not a ImVec2!");
+    }
+    GStyleVarStack.push_back(StyleVarMod(idx, *var));
+    *var = val;
+}
+
+void PopStyleVar(int count)
+{
+    IM_ASSERT(gCanvas != nullptr);
+    IM_ASSERT(GStyleVarStack.size() >= count);
+    while (count > 0)
+    {
+        StyleVarMod& backup = GStyleVarStack.back();
+        switch (backup.Index)
+        {
+        case ImNodesStyleVar_GridSpacing: gCanvas->Style.GridSpacing = backup.Value[0]; break;
+        case ImNodesStyleVar_CurveThickness: gCanvas->Style.CurveThickness = backup.Value[0]; break;
+        case ImNodesStyleVar_CurveStrength: gCanvas->Style.CurveStrength = backup.Value[0]; break;
+        case ImNodesStyleVar_SlotRadius: GStyle.SlotRadius = backup.Value[0]; break;
+        case ImNodesStyleVar_NodeRounding: gCanvas->Style.NodeRounding = backup.Value[0]; break;
+        case ImNodesStyleVar_NodeSpacing: gCanvas->Style.NodeSpacing = ImVec2{backup.Value[0], backup.Value[1]}; break;
+        case ImNodesStyleVar_ItemSpacing: GStyle.ItemSpacing = ImVec2{backup.Value[0], backup.Value[1]}; break;
+        default: IM_ASSERT(0);
+        }
+        GStyleVarStack.pop_back();
+        count--;
+    }
 }
 
 }
