@@ -195,8 +195,8 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
 
     thickness *= canvas->Zoom;
 
-    ImVec2 p2 = input_pos - ImVec2{100 * canvas->Zoom, 0};
-    ImVec2 p3 = output_pos + ImVec2{100 * canvas->Zoom, 0};
+    ImVec2 p2 = input_pos - ImVec2{canvas->Style.CurveStrength * canvas->Zoom, 0};
+    ImVec2 p3 = output_pos + ImVec2{canvas->Style.CurveStrength * canvas->Zoom, 0};
 #if IMGUI_VERSION_NUM < 18000
     ImVec2 closest_pt = ImBezierClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationTol);
 #else
@@ -251,7 +251,7 @@ void BeginCanvas(CanvasState* canvas)
         }
     }
 
-    const float grid = 64.0f * canvas->Zoom;
+    const float grid = canvas->Style.GridSpacing * canvas->Zoom;
 
     ImVec2 pos = ImGui::GetWindowPos();
     ImVec2 size = ImGui::GetWindowSize();
@@ -431,7 +431,6 @@ bool BeginNode(void* node_id, ImVec2* pos, bool* selected)
 void EndNode()
 {
     IM_ASSERT(gCanvas != nullptr);
-    const ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
     auto* impl = canvas->_Impl;
@@ -443,16 +442,16 @@ void EndNode()
     ImGui::EndGroup();    // Slots and content group
 
     ImRect node_rect{
-        ImGui::GetItemRectMin() - style.ItemInnerSpacing * canvas->Zoom,
-        ImGui::GetItemRectMax() + style.ItemInnerSpacing * canvas->Zoom
+        ImGui::GetItemRectMin() - canvas->Style.NodeSpacing * canvas->Zoom,
+        ImGui::GetItemRectMax() + canvas->Style.NodeSpacing * canvas->Zoom
     };
 
     // Render frame
     draw_list->ChannelsSetCurrent(0);
 
     ImColor node_color = canvas->Colors[node_selected ? ColNodeActiveBg : ColNodeBg];
-    draw_list->AddRectFilled(node_rect.Min, node_rect.Max, node_color, style.FrameRounding);
-    draw_list->AddRect(node_rect.Min, node_rect.Max, canvas->Colors[ColNodeBorder], style.FrameRounding);
+    draw_list->AddRectFilled(node_rect.Min, node_rect.Max, node_color, canvas->Style.NodeRounding * canvas->Zoom);
+    draw_list->AddRect(node_rect.Min, node_rect.Max, canvas->Colors[ColNodeBorder], canvas->Style.NodeRounding * canvas->Zoom);
 
     // Create node item
     ImGuiID node_item_id = ImGui::GetID(node_id);

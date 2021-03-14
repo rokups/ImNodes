@@ -24,6 +24,23 @@
 
 #include "ImNodes.h"
 
+//
+// Appearance can be styled mid-frame by ImNodes::Ez::PushStyleVar()/ImNodes::Ez::PopStyleVar().
+//
+// Defined outside the ImNodes namespace similar to enums in ImGui.
+//
+enum ImNodesStyleVar
+{
+    ImNodesStyleVar_GridSpacing,        // float
+    ImNodesStyleVar_CurveThickness,     // float
+    ImNodesStyleVar_CurveStrength,      // float
+    ImNodesStyleVar_SlotRadius,         // float
+    ImNodesStyleVar_NodeRounding,       // float
+    ImNodesStyleVar_NodeSpacing,        // ImVec2
+    ImNodesStyleVar_ItemSpacing,        // ImVec2
+    ImNodesStyleVar_COUNT,
+};
+
 namespace ImNodes
 {
 
@@ -40,6 +57,12 @@ struct SlotInfo
     int kind;
 };
 
+struct Style
+{
+    float SlotRadius = 5.0f;
+    ImVec2 ItemSpacing{8.0f, 4.0f};
+};
+
 /// Begin rendering of node in a graph. Render node content when returns `true`.
 IMGUI_API bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected);
 /// Terminates current node. Should be called regardless of BeginNode() returns value.
@@ -52,6 +75,10 @@ IMGUI_API void InputSlots(const SlotInfo* slots, int snum);
 /// This function must always be called after InputSlots() and before EndNode().
 /// When no input slots are rendered call OutputSlots(nullptr, 0);
 IMGUI_API void OutputSlots(const SlotInfo* slots, int snum);
+
+IMGUI_API void PushStyleVar(ImNodesStyleVar idx, float val);
+IMGUI_API void PushStyleVar(ImNodesStyleVar idx, const ImVec2 &val);
+IMGUI_API void PopStyleVar(int count = 1);
 
 }
 

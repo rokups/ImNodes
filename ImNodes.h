@@ -25,13 +25,6 @@
 
 #include <imgui.h>
 
-//
-// Appearance can be styled by altering ImGui style before calls to ImNodes::*,
-// Style:
-//  * FrameRounding - node border rounding.
-//  * ItemInnerSpacing - spacing between node borders and node content.
-//
-
 namespace ImNodes
 {
 
@@ -66,6 +59,11 @@ struct IMGUI_API CanvasState
         /// Indent connection into slot widget a little. Useful when slot content covers connection end with some kind
         /// of icon (like a circle) and then no seam between icon and connection end is visible.
         float ConnectionIndent = 1.0f;
+
+        float GridSpacing = 64.0f;
+        float CurveStrength = 100.0f;
+        float NodeRounding = 5.0f;
+        ImVec2 NodeSpacing{4.0f, 4.0f};
     } Style;
     /// Implementation detail.
     _CanvasStateImpl* _Impl = nullptr;
