@@ -42,18 +42,30 @@ struct StyleVarMod
     StyleVarMod(ImNodesStyleVar idx, const ImVec2 &val)  { Index = idx; Value[0] = val.x; Value[1] = val.y; }
 };
 
+// TODO: move these to a stackable state variable.
 static Style GStyle;
 static ImVector<StyleVarMod> GStyleVarStack;
-
+static ImDrawListSplitter GSplitter;
+static float GBodyPosY;
+static bool *GNodeSelected;
 
 bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
 {
     ImGuiStorage *storage = ImGui::GetStateStorage();
 
+    GNodeSelected = selected;
+
+    auto draw_list = ImGui::GetWindowDrawList();
+    GSplitter.Clear();
+    GSplitter.Split(draw_list, 2);
+    GSplitter.SetCurrentChannel(draw_list, 1);
+
     bool result = ImNodes::BeginNode(node_id, pos, selected);
 
     ImVec2 title_size = ImGui::CalcTextSize(title);
-    ImVec2 input_pos = ImGui::GetCursorScreenPos() + ImVec2{0, title_size.y + GStyle.ItemSpacing.y * gCanvas->Zoom};
+    ImVec2 title_pos = ImGui::GetCursorScreenPos();
+    GBodyPosY = title_pos.y + title_size.y + gCanvas->Style.NodeSpacing.y * gCanvas->Zoom;
+    ImVec2 input_pos = ImVec2{title_pos.x, GBodyPosY + gCanvas->Style.NodeSpacing.y * gCanvas->Zoom};
 
     // Get widths from previous frame rendering.
     float input_width = storage->GetFloat(ImGui::GetID("input-width"));
@@ -94,14 +106,50 @@ bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
 
     ImGui::SetCursorScreenPos(input_pos);
 
-    ImGui::BeginGroup();
     return result;
 }
 
 void EndNode()
 {
-    ImGui::EndGroup();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    auto* canvas = gCanvas;
+
+    // Inhibit node rendering in ImNodes::EndNode() by setting colors with alpha as 0.
+    ImColor activebg = gCanvas->Colors[ColNodeActiveBg];
+    ImColor inactivebg = gCanvas->Colors[ColNodeBg];
+    gCanvas->Colors[ColNodeActiveBg] = IM_COL32(0,0,0,0);
+    gCanvas->Colors[ColNodeBg] = IM_COL32(0,0,0,0);
+
     ImNodes::EndNode();
+
+    // Restore colors.
+    gCanvas->Colors[ColNodeActiveBg] = activebg;
+    gCanvas->Colors[ColNodeBg] = inactivebg;
+
+    ImRect node_rect{
+        ImGui::GetItemRectMin(),
+        ImGui::GetItemRectMax()
+    };
+
+    ImVec2 titlebar_end = ImVec2{node_rect.Max.x, GBodyPosY};
+    ImVec2 body_pos = ImVec2{node_rect.Min.x, GBodyPosY};
+
+    GSplitter.SetCurrentChannel(draw_list, 0);
+
+    // Render title bar background
+    // TODO: add configurable title color separate from body color.
+    ImColor node_color = canvas->Colors[*GNodeSelected ? ColNodeActiveBg : ColNodeBg];
+    draw_list->AddRectFilled(node_rect.Min, titlebar_end, node_color, canvas->Style.NodeRounding, ImDrawCornerFlags_Top);
+
+    // Render body background
+    node_color = canvas->Colors[*GNodeSelected ? ColNodeActiveBg : ColNodeBg];
+    draw_list->AddRectFilled(body_pos, node_rect.Max, node_color, canvas->Style.NodeRounding, ImDrawCornerFlags_Bot);
+
+    // Render outlines
+    draw_list->AddRect(node_rect.Min, node_rect.Max, canvas->Colors[ColNodeBorder], canvas->Style.NodeRounding);
+    draw_list->AddLine(body_pos, titlebar_end, canvas->Colors[ColNodeBorder]);
+
+    GSplitter.Merge(draw_list);
 }
 
 bool Slot(const char* title, int kind, ImVec2 &pos)
