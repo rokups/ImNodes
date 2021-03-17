@@ -126,14 +126,17 @@ void EndNode()
     // Inhibit node rendering in ImNodes::EndNode() by setting colors with alpha as 0.
     ImColor activebg = gCanvas->Colors[ColNodeActiveBg];
     ImColor inactivebg = gCanvas->Colors[ColNodeBg];
+    ImColor border = gCanvas->Colors[ColNodeBorder];
     gCanvas->Colors[ColNodeActiveBg] = IM_COL32(0,0,0,0);
     gCanvas->Colors[ColNodeBg] = IM_COL32(0,0,0,0);
+    gCanvas->Colors[ColNodeBorder] = IM_COL32(0,0,0,0);
 
     ImNodes::EndNode();
 
     // Restore colors.
     gCanvas->Colors[ColNodeActiveBg] = activebg;
     gCanvas->Colors[ColNodeBg] = inactivebg;
+    gCanvas->Colors[ColNodeBorder] = border;
 
     ImRect node_rect{
         ImGui::GetItemRectMin(),
