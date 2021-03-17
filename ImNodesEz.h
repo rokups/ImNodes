@@ -79,11 +79,11 @@ struct Style
     ImVec2 ItemSpacing{8.0f, 4.0f};
     struct
     {
-        ImVec4 NodeBodyBg;
-        ImVec4 NodeBodyActiveBg;
-        ImVec4 NodeBorder;
-        ImVec4 NodeTitleBarBg;
-        ImVec4 NodeTitleBarActiveBg;
+        ImVec4 NodeBodyBg{0.12f, 0.12f, 0.12f, 1.0f};
+        ImVec4 NodeBodyActiveBg{0.25f, 0.25f, 0.25f, 1.0f};
+        ImVec4 NodeBorder{0.4f, 0.4f, 0.4f, 1.0f};
+        ImVec4 NodeTitleBarBg{0.22f, 0.22f, 0.22f, 1.0f};
+        ImVec4 NodeTitleBarActiveBg{0.5f, 0.5f, 0.5f, 1.0f};
     } Colors;
 };
 

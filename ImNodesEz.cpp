@@ -34,6 +34,7 @@ extern CanvasState* gCanvas;
 namespace Ez
 {
 
+static ImVec4& GetStyleColorRef(ImNodesStyleCol idx);
 static ImU32 GetStyleColorU32(ImNodesStyleCol idx);
 
 struct StyleVarMod
@@ -149,17 +150,16 @@ void EndNode()
     GSplitter.SetCurrentChannel(draw_list, 0);
 
     // Render title bar background
-    // TODO: add configurable title color separate from body color.
-    ImColor node_color = canvas->Colors[*GNodeSelected ? ColNodeActiveBg : ColNodeBg];
+    ImU32 node_color = GetStyleColorU32(*GNodeSelected ? ImNodesStyleCol_NodeTitleBarActiveBg : ImNodesStyleCol_NodeTitleBarBg);
     draw_list->AddRectFilled(node_rect.Min, titlebar_end, node_color, canvas->Style.NodeRounding, ImDrawCornerFlags_Top);
 
     // Render body background
-    node_color = canvas->Colors[*GNodeSelected ? ColNodeActiveBg : ColNodeBg];
+    node_color = GetStyleColorU32(*GNodeSelected ? ImNodesStyleCol_NodeBodyActiveBg : ImNodesStyleCol_NodeBodyBg);
     draw_list->AddRectFilled(body_pos, node_rect.Max, node_color, canvas->Style.NodeRounding, ImDrawCornerFlags_Bot);
 
     // Render outlines
-    draw_list->AddRect(node_rect.Min, node_rect.Max, canvas->Colors[ColNodeBorder], canvas->Style.NodeRounding);
-    draw_list->AddLine(body_pos, titlebar_end, canvas->Colors[ColNodeBorder]);
+    draw_list->AddRect(node_rect.Min, node_rect.Max, GetStyleColorU32(ImNodesStyleCol_NodeBorder), canvas->Style.NodeRounding);
+    draw_list->AddLine(body_pos, titlebar_end, GetStyleColorU32(ImNodesStyleCol_NodeBorder));
 
     GSplitter.Merge(draw_list);
 }
@@ -185,7 +185,7 @@ bool Slot(const char* title, int kind, ImVec2 &pos)
         bool is_active = ImNodes::IsSlotCurveHovered() ||
                          (ImNodes::IsConnectingCompatibleSlot() /*&& !IsAlreadyConnectedWithPendingConnection(title, kind)*/);
 
-        ImColor color = gCanvas->Colors[is_active ? ImNodes::ColConnectionActive : ImNodes::ColConnection];
+        ImColor color = GetStyleColorRef(is_active ? ImNodesStyleCol_ConnectionActive : ImNodesStyleCol_Connection);
 
         ImGui::PushStyleColor(ImGuiCol_Text, color.Value);
 
