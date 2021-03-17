@@ -34,6 +34,8 @@ extern CanvasState* gCanvas;
 namespace Ez
 {
 
+static ImU32 GetStyleColorU32(ImNodesStyleCol idx);
+
 struct StyleVarMod
 {
     ImNodesStyleVar Index;
@@ -42,9 +44,16 @@ struct StyleVarMod
     StyleVarMod(ImNodesStyleVar idx, const ImVec2 &val)  { Index = idx; Value[0] = val.x; Value[1] = val.y; }
 };
 
+struct StyleColMod
+{
+    ImNodesStyleCol Index;
+    ImVec4 Value;
+};
+
 // TODO: move these to a stackable state variable.
 static Style GStyle;
 static ImVector<StyleVarMod> GStyleVarStack;
+static ImVector<StyleColMod> GStyleColStack;
 static ImDrawListSplitter GSplitter;
 static float GBodyPosY;
 static bool *GNodeSelected;
@@ -331,6 +340,56 @@ void PopStyleVar(int count)
         default: IM_ASSERT(0);
         }
         GStyleVarStack.pop_back();
+        count--;
+    }
+}
+
+static ImVec4& GetStyleColorRef(ImNodesStyleCol idx)
+{
+    IM_ASSERT(idx < ImNodesStyleCol_COUNT);
+    IM_ASSERT(gCanvas != nullptr);
+    switch (idx)
+    {
+    case ImNodesStyleCol_GridLines:             return gCanvas->Colors[ColCanvasLines].Value;
+    case ImNodesStyleCol_NodeBodyBg:            return GStyle.Colors.NodeBodyBg;
+    case ImNodesStyleCol_NodeBodyActiveBg:      return GStyle.Colors.NodeBodyActiveBg;
+    case ImNodesStyleCol_NodeBorder:            return GStyle.Colors.NodeBorder;
+    case ImNodesStyleCol_Connection:            return gCanvas->Colors[ColConnection].Value;
+    case ImNodesStyleCol_ConnectionActive:      return gCanvas->Colors[ColConnectionActive].Value;
+    case ImNodesStyleCol_SelectBg:              return gCanvas->Colors[ColSelectBg].Value;
+    case ImNodesStyleCol_SelectBorder:          return gCanvas->Colors[ColSelectBorder].Value;
+    case ImNodesStyleCol_NodeTitleBarBg:        return GStyle.Colors.NodeTitleBarBg;
+    case ImNodesStyleCol_NodeTitleBarActiveBg:  return GStyle.Colors.NodeTitleBarActiveBg;
+    default: IM_ASSERT(0);
+    }
+}
+
+static ImU32 GetStyleColorU32(ImNodesStyleCol idx)
+{
+    return ImGui::ColorConvertFloat4ToU32(GetStyleColorRef(idx));
+}
+
+void PushStyleColor(ImNodesStyleCol idx, ImU32 col)
+{
+    PushStyleColor(idx, ImGui::ColorConvertU32ToFloat4(col));
+}
+
+void PushStyleColor(ImNodesStyleCol idx, const ImVec4& col)
+{
+    ImVec4 &val = GetStyleColorRef(idx);
+    GStyleColStack.push_back(StyleColMod{idx, val});
+    val = col;
+}
+
+void PopStyleColor(int count)
+{
+    IM_ASSERT(GStyleColStack.size() >= count);
+    while (count > 0)
+    {
+        StyleColMod &backup = GStyleColStack.back();
+        ImVec4 &val = GetStyleColorRef(backup.Index);
+        val = backup.Value;
+        GStyleColStack.pop_back();
         count--;
     }
 }

@@ -41,6 +41,21 @@ enum ImNodesStyleVar
     ImNodesStyleVar_COUNT,
 };
 
+enum ImNodesStyleCol
+{
+    ImNodesStyleCol_GridLines,
+    ImNodesStyleCol_NodeBodyBg,
+    ImNodesStyleCol_NodeBodyActiveBg,
+    ImNodesStyleCol_NodeBorder,
+    ImNodesStyleCol_Connection,
+    ImNodesStyleCol_ConnectionActive,
+    ImNodesStyleCol_SelectBg,
+    ImNodesStyleCol_SelectBorder,
+    ImNodesStyleCol_NodeTitleBarBg,
+    ImNodesStyleCol_NodeTitleBarActiveBg,
+    ImNodesStyleCol_COUNT,
+};
+
 namespace ImNodes
 {
 
@@ -57,10 +72,19 @@ struct SlotInfo
     int kind;
 };
 
+// Style which holds the extended variables and colors not already stored in ImNodes::CanvasState.
 struct Style
 {
     float SlotRadius = 5.0f;
     ImVec2 ItemSpacing{8.0f, 4.0f};
+    struct
+    {
+        ImVec4 NodeBodyBg;
+        ImVec4 NodeBodyActiveBg;
+        ImVec4 NodeBorder;
+        ImVec4 NodeTitleBarBg;
+        ImVec4 NodeTitleBarActiveBg;
+    } Colors;
 };
 
 /// Begin rendering of node in a graph. Render node content when returns `true`.
@@ -79,6 +103,10 @@ IMGUI_API void OutputSlots(const SlotInfo* slots, int snum);
 IMGUI_API void PushStyleVar(ImNodesStyleVar idx, float val);
 IMGUI_API void PushStyleVar(ImNodesStyleVar idx, const ImVec2 &val);
 IMGUI_API void PopStyleVar(int count = 1);
+
+IMGUI_API void PushStyleColor(ImNodesStyleCol idx, ImU32 col);
+IMGUI_API void PushStyleColor(ImNodesStyleCol idx, const ImVec4& col);
+IMGUI_API void PopStyleColor(int count);
 
 }
 
