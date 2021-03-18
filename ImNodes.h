@@ -80,6 +80,8 @@ IMGUI_API void EndCanvas();
 IMGUI_API bool BeginNode(void* node_id, ImVec2* pos, bool* selected);
 /// Terminates current node. Should be called regardless of BeginNode() returns value.
 IMGUI_API void EndNode();
+/// Returns `true` if the current node is hovered. Call between `BeginNode()` and `EndNode()`.
+IMGUI_API bool IsNodeHovered();
 /// Specified node will be positioned at the mouse cursor on next frame. Call when new node is created.
 IMGUI_API void AutoPositionNode(void* node_id);
 /// Returns `true` when new connection is made. Connection information is returned into `connection` parameter. Must be
