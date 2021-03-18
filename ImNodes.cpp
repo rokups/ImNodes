@@ -94,6 +94,8 @@ struct _CanvasStateImpl
         ImVec2* Pos = nullptr;
         /// User-provided node selection status.
         bool* Selected = nullptr;
+        /// Stack accumulated ImGui ID for the node item.
+        ImGuiID ItemId;
     } Node;
     /// Current slot data.
     struct
@@ -136,6 +138,10 @@ struct _CanvasStateImpl
     int PrevSelectCount = 0;
     int CurrSelectCount = 0;
     ImGuiID PendingActiveNodeId = 0;
+    /// The ID of the currently top-most hovered node as determined the last frame.
+    ImGuiID HoveredNodeId = 0;
+    /// The ID of the pending top-most hovered node determined thus far this frame.
+    ImGuiID PendingHoveredNodeId = 0;
 };
 
 CanvasState::CanvasState() noexcept
@@ -330,6 +336,9 @@ void EndCanvas()
     {
     case State_None:
     {
+        // Set the hovered node, if there is any, for the next frame.
+        impl->HoveredNodeId = impl->PendingHoveredNodeId;
+
         ImGuiID canvas_id = ImGui::GetID("canvas");
         if (ImGui::IsMouseDown(0) && ImGui::GetCurrentWindow()->ContentRegionRect.Contains(ImGui::GetMousePos()))
         {
@@ -385,6 +394,9 @@ void EndCanvas()
     }
     }
 
+    // Clear this in preparation for the next frame.
+    impl->PendingHoveredNodeId = 0;
+
     ImGui::SetWindowFontScale(1.f);
     ImGui::PopID();     // canvas
     gCanvas = impl->PrevCanvas;
@@ -422,6 +434,8 @@ bool BeginNode(void* node_id, ImVec2* pos, bool* selected)
 
     ImGui::PushID(node_id);
 
+    impl->Node.ItemId = ImGui::GetID(node_id);
+
     ImGui::BeginGroup();    // Slots and content group
     draw_list->ChannelsSetCurrent(1);
 
@@ -454,7 +468,7 @@ void EndNode()
     draw_list->AddRect(node_rect.Min, node_rect.Max, canvas->Colors[ColNodeBorder], canvas->Style.NodeRounding * canvas->Zoom);
 
     // Create node item
-    ImGuiID node_item_id = ImGui::GetID(node_id);
+    ImGuiID node_item_id = impl->Node.ItemId;
     ImGui::ItemSize(node_rect.GetSize());
     ImGui::ItemAdd(node_rect, node_item_id);
 
@@ -470,6 +484,19 @@ void EndNode()
     {
     case State_None:
     {
+        //
+        // Nodes are drawn from back to front, but the user interaction is rather front to back. Therefore the
+        // top-most of overlayed nodes will not be known until all nodes have been rendered. So we continuously
+        // save the potential top-most node and thus overwrite the previous candidate. The final top-most node
+        // is known once EndCanvas() is called.
+        //
+        // Since we do this only in this state a node is not considered hovered when another node is dragged
+        // or an area selection is being made. Also, since IsItemHovered() is not called with any flags a node is
+        // not considered hovered during a pending connection (the source slot is active).
+        //
+        if (ImGui::IsItemHovered())
+            impl->PendingHoveredNodeId = node_item_id;
+
         // Node selection behavior. Selection can change only when no node is being dragged and connections are not being made.
         if (impl->JustConnected || ImGui::GetDragDropPayload() != nullptr)
         {
@@ -581,6 +608,12 @@ void EndNode()
         impl->CurrSelectCount++;
 
     ImGui::PopID();     // id
+}
+
+bool IsNodeHovered()
+{
+    assert(gCanvas != nullptr);
+    return gCanvas->_Impl->Node.ItemId == gCanvas->_Impl->HoveredNodeId;
 }
 
 bool GetNewConnection(void** input_node, const char** input_slot_title, void** output_node, const char** output_slot_title)
