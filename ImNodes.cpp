@@ -137,7 +137,8 @@ struct _CanvasStateImpl
     ImVector<_IgnoreSlot> IgnoreConnections{};
     int PrevSelectCount = 0;
     int CurrSelectCount = 0;
-    ImGuiID PendingActiveNodeId = 0;
+    ImGuiID PendingActiveItemId = 0;
+    ImGuiID PendingActiveSlotId = 0;
     /// The ID of the currently top-most hovered node as determined the last frame.
     ImGuiID HoveredNodeId = 0;
     /// The ID of the pending top-most hovered node determined thus far this frame.
@@ -326,10 +327,10 @@ void EndCanvas()
     if (impl->DoSelectionsFrame <= ImGui::GetCurrentContext()->FrameCount)
         impl->SingleSelectedNode = nullptr;
 
-    if (impl->PendingActiveNodeId != 0)
+    if (impl->PendingActiveItemId != 0)
     {
-        ImGui::SetActiveID(impl->PendingActiveNodeId, ImGui::GetCurrentWindow());
-        impl->PendingActiveNodeId = 0;
+        ImGui::SetActiveID(impl->PendingActiveItemId, ImGui::GetCurrentWindow());
+        impl->PendingActiveItemId = 0;
     }
 
     switch (impl->State)
@@ -452,6 +453,7 @@ void EndNode()
 
     bool& node_selected = *impl->Node.Selected;
     ImVec2& node_pos = *impl->Node.Pos;
+    bool activate = false;
 
     ImGui::EndGroup();    // Slots and content group
 
@@ -523,7 +525,7 @@ void EndNode()
             // top-most of overlayed nodes will not be known until all nodes have been rendered. So we continuously
             // save the potential top-most node and thus overwrite the previous candidate. The final top-most node
             // is known once EndCanvas() is called.
-            impl->PendingActiveNodeId = node_item_id;
+            activate = true;
         }
         else if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered() && ImGui::IsItemActive())
         {
@@ -598,6 +600,15 @@ void EndNode()
         break;
     }
     }
+
+    // Set the node as pending active unless one of it's slot's is pending active.
+    if (impl->PendingActiveSlotId != 0)
+    {
+        impl->PendingActiveItemId = impl->PendingActiveSlotId;
+        impl->PendingActiveSlotId = 0;
+    }
+    else if (activate)
+        impl->PendingActiveItemId = node_item_id;
 
     draw_list->ChannelsMerge();
 
@@ -771,7 +782,7 @@ void EndSlot()
     ImGui::ItemAdd(slot_rect, ImGui::GetID(impl->slot.Title));
 
     if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
-        ImGui::SetActiveID(ImGui::GetID(impl->slot.Title), ImGui::GetCurrentWindow());
+        impl->PendingActiveSlotId = ImGui::GetID(impl->slot.Title);
 
     if (ImGui::IsItemActive() && !ImGui::IsMouseDown(0))
         ImGui::ClearActiveID();
