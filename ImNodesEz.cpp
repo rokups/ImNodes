@@ -195,11 +195,11 @@ void EndNode()
     g.Splitter.SetCurrentChannel(draw_list, 0);     // Background layer.
 
     // Render title bar background
-    ImU32 node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeTitleBarActiveBg : ImNodesStyleCol_NodeTitleBarBg);
+    ImU32 node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeTitleBarBgActive : ImNodesStyleCol_NodeTitleBarBg);
     draw_list->AddRectFilled(node_rect.Min, titlebar_end, node_color, g.State.Style.NodeRounding, ImDrawCornerFlags_Top);
 
     // Render body background
-    node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeBodyActiveBg : ImNodesStyleCol_NodeBodyBg);
+    node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeBodyBgActive : ImNodesStyleCol_NodeBodyBg);
     draw_list->AddRectFilled(body_pos, node_rect.Max, node_color, g.State.Style.NodeRounding, ImDrawCornerFlags_Bot);
 
     // Render outlines
@@ -410,14 +410,14 @@ static ImVec4& GetStyleColorRef(ImNodesStyleCol idx)
     {
     case ImNodesStyleCol_GridLines:             return g.State.Colors[ColCanvasLines].Value;
     case ImNodesStyleCol_NodeBodyBg:            return g.Style.Colors.NodeBodyBg;
-    case ImNodesStyleCol_NodeBodyActiveBg:      return g.Style.Colors.NodeBodyActiveBg;
+    case ImNodesStyleCol_NodeBodyBgActive:      return g.Style.Colors.NodeBodyBgActive;
     case ImNodesStyleCol_NodeBorder:            return g.Style.Colors.NodeBorder;
     case ImNodesStyleCol_Connection:            return g.State.Colors[ColConnection].Value;
     case ImNodesStyleCol_ConnectionActive:      return g.State.Colors[ColConnectionActive].Value;
     case ImNodesStyleCol_SelectBg:              return g.State.Colors[ColSelectBg].Value;
     case ImNodesStyleCol_SelectBorder:          return g.State.Colors[ColSelectBorder].Value;
     case ImNodesStyleCol_NodeTitleBarBg:        return g.Style.Colors.NodeTitleBarBg;
-    case ImNodesStyleCol_NodeTitleBarActiveBg:  return g.Style.Colors.NodeTitleBarActiveBg;
+    case ImNodesStyleCol_NodeTitleBarBgActive:  return g.Style.Colors.NodeTitleBarBgActive;
     default: IM_ASSERT(0);
     }
 }
