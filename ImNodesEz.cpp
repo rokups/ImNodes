@@ -54,7 +54,8 @@ struct Context
     Style Style;
     ImVector<StyleVarMod> StyleVarStack;
     ImVector<StyleColMod> StyleColStack;
-    ImDrawListSplitter Splitter;
+    ImDrawListSplitter NodeSplitter;
+    ImDrawListSplitter CanvasSplitter;
     float BodyPosY;
     bool *NodeSelected;
     CanvasState State;
@@ -92,12 +93,30 @@ ImNodes::CanvasState& GetState()
 
 void BeginCanvas()
 {
+    IM_ASSERT(GContext != nullptr);
+    Context &g = *GContext;
+    auto draw_list = ImGui::GetWindowDrawList();
+
+    //
+    // Setup and use this splitter to separate nodes and connections into layers. The connections should
+    // not be rendered until after the nodes to get correct positions in relation to the nodes' slots on
+    // the same frame, but be rendered behind the nodes.
+    //
+    g.CanvasSplitter.Clear();
+    g.CanvasSplitter.Split(draw_list, 2);
+
     ImNodes::BeginCanvas(&GContext->State);
 }
 
 void EndCanvas()
 {
+    IM_ASSERT(GContext != nullptr);
+    Context &g = *GContext;
+    auto draw_list = ImGui::GetWindowDrawList();
+
     ImNodes::EndCanvas();
+
+    g.CanvasSplitter.Merge(draw_list);    
 }
 
 
@@ -106,13 +125,15 @@ bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected)
     IM_ASSERT(GContext != nullptr);
     Context &g = *GContext;
     ImGuiStorage *storage = ImGui::GetStateStorage();
+    auto draw_list = ImGui::GetWindowDrawList();
 
     g.NodeSelected = selected;
 
-    auto draw_list = ImGui::GetWindowDrawList();
-    g.Splitter.Clear();
-    g.Splitter.Split(draw_list, 2);
-    g.Splitter.SetCurrentChannel(draw_list, 1);     // Front layer.
+    g.CanvasSplitter.SetCurrentChannel(draw_list, 1);   // Node layer.
+
+    g.NodeSplitter.Clear();
+    g.NodeSplitter.Split(draw_list, 2);
+    g.NodeSplitter.SetCurrentChannel(draw_list, 1);     // Front layer.
 
     bool result = ImNodes::BeginNode(node_id, pos, selected);
 
@@ -194,7 +215,7 @@ void EndNode()
     ImVec2 titlebar_end = ImVec2{node_rect.Max.x, g.BodyPosY};
     ImVec2 body_pos = ImVec2{node_rect.Min.x, g.BodyPosY};
 
-    g.Splitter.SetCurrentChannel(draw_list, 0);     // Background layer.
+    g.NodeSplitter.SetCurrentChannel(draw_list, 0);     // Background layer.
 
     // Render title bar background
     ImU32 node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeTitleBarBgActive : hovered ? ImNodesStyleCol_NodeTitleBarBgHovered : ImNodesStyleCol_NodeTitleBarBg);
@@ -208,7 +229,7 @@ void EndNode()
     draw_list->AddRect(node_rect.Min, node_rect.Max, GetStyleColorU32(ImNodesStyleCol_NodeBorder), g.State.Style.NodeRounding);
     draw_list->AddLine(body_pos, titlebar_end, GetStyleColorU32(ImNodesStyleCol_NodeBorder));
 
-    g.Splitter.Merge(draw_list);
+    g.NodeSplitter.Merge(draw_list);
 }
 
 bool Slot(const char* title, int kind, ImVec2 &pos)
@@ -344,6 +365,17 @@ void OutputSlots(const SlotInfo* slots, int snum)
     storage->SetFloat(ImGui::GetID("output-width"), ImGui::GetItemRectSize().x);
 
     PopStyleVar(2);
+}
+
+bool Connection(void* input_node, const char* input_slot, void* output_node, const char* output_slot)
+{
+    IM_ASSERT(GContext != nullptr);
+    Context &g = *GContext;
+    auto draw_list = ImGui::GetWindowDrawList();
+
+    g.CanvasSplitter.SetCurrentChannel(draw_list, 0);   // Connection layer.
+
+    return ImNodes::Connection(input_node, input_slot, output_node, output_slot);
 }
 
 void PushStyleVar(ImNodesStyleVar idx, float val)

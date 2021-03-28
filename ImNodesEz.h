@@ -115,6 +115,8 @@ IMGUI_API void InputSlots(const SlotInfo* slots, int snum);
 /// When no input slots are rendered call OutputSlots(nullptr, 0);
 IMGUI_API void OutputSlots(const SlotInfo* slots, int snum);
 
+bool Connection(void* input_node, const char* input_slot, void* output_node, const char* output_slot);
+
 IMGUI_API void PushStyleVar(ImNodesStyleVar idx, float val);
 IMGUI_API void PushStyleVar(ImNodesStyleVar idx, const ImVec2 &val);
 IMGUI_API void PopStyleVar(int count = 1);
