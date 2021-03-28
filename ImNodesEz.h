@@ -45,6 +45,7 @@ enum ImNodesStyleCol
 {
     ImNodesStyleCol_GridLines,
     ImNodesStyleCol_NodeBodyBg,
+    ImNodesStyleCol_NodeBodyBgHovered,
     ImNodesStyleCol_NodeBodyBgActive,
     ImNodesStyleCol_NodeBorder,
     ImNodesStyleCol_Connection,
@@ -52,6 +53,7 @@ enum ImNodesStyleCol
     ImNodesStyleCol_SelectBg,
     ImNodesStyleCol_SelectBorder,
     ImNodesStyleCol_NodeTitleBarBg,
+    ImNodesStyleCol_NodeTitleBarBgHovered,
     ImNodesStyleCol_NodeTitleBarBgActive,
     ImNodesStyleCol_COUNT,
 };
@@ -80,9 +82,11 @@ struct Style
     struct
     {
         ImVec4 NodeBodyBg{0.12f, 0.12f, 0.12f, 1.0f};
+        ImVec4 NodeBodyBgHovered{0.16f, 0.16f, 0.16f, 1.0f};
         ImVec4 NodeBodyBgActive{0.25f, 0.25f, 0.25f, 1.0f};
         ImVec4 NodeBorder{0.4f, 0.4f, 0.4f, 1.0f};
         ImVec4 NodeTitleBarBg{0.22f, 0.22f, 0.22f, 1.0f};
+        ImVec4 NodeTitleBarBgHovered{0.32f, 0.32f, 0.32f, 1.0f};
         ImVec4 NodeTitleBarBgActive{0.5f, 0.5f, 0.5f, 1.0f};
     } Colors;
 };

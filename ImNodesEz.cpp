@@ -169,6 +169,8 @@ void EndNode()
     Context &g = *GContext;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    bool hovered = IsNodeHovered();
+
     // Inhibit node rendering in ImNodes::EndNode() by setting colors with alpha as 0.
     ImColor activebg = g.State.Colors[ColNodeActiveBg];
     ImColor inactivebg = g.State.Colors[ColNodeBg];
@@ -195,11 +197,11 @@ void EndNode()
     g.Splitter.SetCurrentChannel(draw_list, 0);     // Background layer.
 
     // Render title bar background
-    ImU32 node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeTitleBarBgActive : ImNodesStyleCol_NodeTitleBarBg);
+    ImU32 node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeTitleBarBgActive : hovered ? ImNodesStyleCol_NodeTitleBarBgHovered : ImNodesStyleCol_NodeTitleBarBg);
     draw_list->AddRectFilled(node_rect.Min, titlebar_end, node_color, g.State.Style.NodeRounding, ImDrawCornerFlags_Top);
 
     // Render body background
-    node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeBodyBgActive : ImNodesStyleCol_NodeBodyBg);
+    node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeBodyBgActive : hovered ? ImNodesStyleCol_NodeBodyBgHovered : ImNodesStyleCol_NodeBodyBg);
     draw_list->AddRectFilled(body_pos, node_rect.Max, node_color, g.State.Style.NodeRounding, ImDrawCornerFlags_Bot);
 
     // Render outlines
@@ -410,6 +412,7 @@ static ImVec4& GetStyleColorRef(ImNodesStyleCol idx)
     {
     case ImNodesStyleCol_GridLines:             return g.State.Colors[ColCanvasLines].Value;
     case ImNodesStyleCol_NodeBodyBg:            return g.Style.Colors.NodeBodyBg;
+    case ImNodesStyleCol_NodeBodyBgHovered:     return g.Style.Colors.NodeBodyBgHovered;
     case ImNodesStyleCol_NodeBodyBgActive:      return g.Style.Colors.NodeBodyBgActive;
     case ImNodesStyleCol_NodeBorder:            return g.Style.Colors.NodeBorder;
     case ImNodesStyleCol_Connection:            return g.State.Colors[ColConnection].Value;
@@ -417,6 +420,7 @@ static ImVec4& GetStyleColorRef(ImNodesStyleCol idx)
     case ImNodesStyleCol_SelectBg:              return g.State.Colors[ColSelectBg].Value;
     case ImNodesStyleCol_SelectBorder:          return g.State.Colors[ColSelectBorder].Value;
     case ImNodesStyleCol_NodeTitleBarBg:        return g.Style.Colors.NodeTitleBarBg;
+    case ImNodesStyleCol_NodeTitleBarBgHovered: return g.Style.Colors.NodeTitleBarBgHovered;
     case ImNodesStyleCol_NodeTitleBarBgActive:  return g.Style.Colors.NodeTitleBarBgActive;
     default: IM_ASSERT(0);
     }
