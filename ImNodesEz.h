@@ -87,6 +87,17 @@ struct Style
     } Colors;
 };
 
+struct Context;
+
+IMGUI_API Context* CreateContext();
+IMGUI_API void FreeContext(Context *ctx);
+IMGUI_API void SetContext(Context *ctx);
+
+IMGUI_API ImNodes::CanvasState& GetState();
+
+IMGUI_API void BeginCanvas();
+IMGUI_API void EndCanvas();
+
 /// Begin rendering of node in a graph. Render node content when returns `true`.
 IMGUI_API bool BeginNode(void* node_id, const char* title, ImVec2* pos, bool* selected);
 /// Terminates current node. Should be called regardless of BeginNode() returns value.
