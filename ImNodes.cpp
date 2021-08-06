@@ -271,7 +271,7 @@ void BeginCanvas(CanvasState* canvas)
 
 void EndCanvas()
 {
-    assert(gCanvas != nullptr);     // Did you forget calling BeginCanvas()?
+    IM_ASSERT(gCanvas != nullptr);     // Did you forget calling BeginCanvas()?
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
@@ -380,10 +380,10 @@ void EndCanvas()
 
 bool BeginNode(void* node_id, ImVec2* pos, bool* selected)
 {
-    assert(gCanvas != nullptr);
-    assert(node_id != nullptr);
-    assert(pos != nullptr);
-    assert(selected != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
+    IM_ASSERT(node_id != nullptr);
+    IM_ASSERT(pos != nullptr);
+    IM_ASSERT(selected != nullptr);
     const ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
@@ -418,7 +418,7 @@ bool BeginNode(void* node_id, ImVec2* pos, bool* selected)
 
 void EndNode()
 {
-    assert(gCanvas != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
     const ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
@@ -556,11 +556,11 @@ void EndNode()
 
 bool GetNewConnection(void** input_node, const char** input_slot_title, void** output_node, const char** output_slot_title)
 {
-    assert(gCanvas != nullptr);
-    assert(input_node != nullptr);
-    assert(input_slot_title != nullptr);
-    assert(output_node != nullptr);
-    assert(output_slot_title != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
+    IM_ASSERT(input_node != nullptr);
+    IM_ASSERT(input_slot_title != nullptr);
+    IM_ASSERT(output_node != nullptr);
+    IM_ASSERT(output_slot_title != nullptr);
 
     auto* canvas = gCanvas;
     auto* impl = canvas->_Impl;
@@ -580,10 +580,10 @@ bool GetNewConnection(void** input_node, const char** input_slot_title, void** o
 
 bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kind)
 {
-    assert(gCanvas != nullptr);
-    assert(node_id != nullptr);
-    assert(slot_title != nullptr);
-    assert(slot_kind != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
+    IM_ASSERT(node_id != nullptr);
+    IM_ASSERT(slot_title != nullptr);
+    IM_ASSERT(slot_kind != nullptr);
 
     if (auto* payload = ImGui::GetDragDropPayload())
     {
@@ -603,11 +603,11 @@ bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kin
 
 bool Connection(void* input_node, const char* input_slot, void* output_node, const char* output_slot)
 {
-    assert(gCanvas != nullptr);
-    assert(input_node != nullptr);
-    assert(input_slot != nullptr);
-    assert(output_node != nullptr);
-    assert(output_slot != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
+    IM_ASSERT(input_node != nullptr);
+    IM_ASSERT(input_slot != nullptr);
+    IM_ASSERT(output_node != nullptr);
+    IM_ASSERT(output_slot != nullptr);
 
     bool is_connected = true;
     auto* canvas = gCanvas;
@@ -790,13 +790,13 @@ void EndSlot()
 
 void AutoPositionNode(void* node_id)
 {
-    assert(gCanvas != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
     gCanvas->_Impl->AutoPositionNodeId = node_id;
 }
 
 bool IsSlotCurveHovered()
 {
-    assert(gCanvas != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
     auto* canvas = gCanvas;
     auto* impl = canvas->_Impl;
 
@@ -817,7 +817,7 @@ bool IsSlotCurveHovered()
 
 bool IsConnectingCompatibleSlot()
 {
-    assert(gCanvas != nullptr);
+    IM_ASSERT(gCanvas != nullptr);
     auto* canvas = gCanvas;
     auto* impl = canvas->_Impl;
 
