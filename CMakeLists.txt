@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.1)
 project(ImNodes)
 
 set(CMAKE_CXX_STANDARD 14)
-set(IMNODES_IMGUI_VERSION "v1.80" CACHE STRING "ImGui version to use for building sample,")
+set(IMNODES_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use for building sample,")
 
 if (NOT IMGUI_DIR)
     if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -35,7 +35,7 @@ if (NOT IMGUI_DIR)
         # independently. These are not necessary when user is consuming library in their
         # own project.
         if (NOT EXISTS "${IMGUI_DIR}.zip")
-            file(DOWNLOAD "https://github.com/ocornut/imgui/archive/${IMNODES_IMGUI_VERSION}.zip" ${IMGUI_DIR}.zip)
+            file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v${IMNODES_IMGUI_VERSION}.zip" ${IMGUI_DIR}.zip)
         endif ()
         if (NOT EXISTS "${IMGUI_DIR}")
             execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${IMGUI_DIR}.zip)
