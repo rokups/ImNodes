@@ -51,7 +51,7 @@ struct StyleColMod
 
 struct Context
 {
-    Style Style;
+    StyleVars Style;
     ImVector<StyleVarMod> StyleVarStack;
     ImVector<StyleColMod> StyleColStack;
     ImDrawListSplitter NodeSplitter;

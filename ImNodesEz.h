@@ -75,7 +75,7 @@ struct SlotInfo
 };
 
 // Style which holds the extended variables and colors not already stored in ImNodes::CanvasState.
-struct Style
+struct StyleVars
 {
     float SlotRadius = 5.0f;
     ImVec2 ItemSpacing{8.0f, 4.0f};

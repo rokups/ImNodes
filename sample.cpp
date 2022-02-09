@@ -122,12 +122,13 @@ namespace ImGui
 void ShowDemoWindow(bool*)
 {
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
-    static ImNodes::CanvasState canvas{};
+    static ImNodes::Ez::Context* context = ImNodes::Ez::CreateContext();
+    IM_UNUSED(context);
 
     if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
-        ImNodes::BeginCanvas(&canvas);
+        ImNodes::Ez::BeginCanvas();
         for (auto it = nodes.begin(); it != nodes.end();)
         {
             MyNode* node = *it;
@@ -214,16 +215,18 @@ void ShowDemoWindow(bool*)
                     ImNodes::AutoPositionNode(nodes.back());
                 }
             }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Reset Zoom"))
-                canvas.Zoom = 1;
+
+            // FIXME: we lost access to zoom.
+            //ImGui::Separator();
+            //if (ImGui::MenuItem("Reset Zoom"))
+            //    canvas.Zoom = 1;
 
             if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
                 ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
 
-        ImNodes::EndCanvas();
+        ImNodes::Ez::EndCanvas();
     }
     ImGui::End();
 
