@@ -26,7 +26,8 @@
 
 #include "ImNodes.h"
 
-#include <imgui_internal.h>
+#include <assert.h>
+#include <imgui/imgui_internal.h>
 #include <limits>
 
 namespace ImNodes
