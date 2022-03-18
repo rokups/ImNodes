@@ -216,10 +216,9 @@ void ShowDemoWindow(bool*)
                 }
             }
 
-            // FIXME: we lost access to zoom.
-            //ImGui::Separator();
-            //if (ImGui::MenuItem("Reset Zoom"))
-            //    canvas.Zoom = 1;
+            ImGui::Separator();
+            if (ImGui::MenuItem("Reset Zoom"))
+                ImNodes::GetCurrentCanvas()->Zoom = 1;
 
             if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
                 ImGui::CloseCurrentPopup();
