@@ -44,7 +44,7 @@ if (NOT IMGUI_DIR)
 endif ()
 
 if (NOT EXISTS "${IMGUI_DIR}/CMakeLists.txt")
-    file(DOWNLOAD "https://gist.githubusercontent.com/rokups/f771217b2d530d170db5cb1e08e9a8f4/raw/b714a5c8208a57a2ed43ac7d38026bc5fb5bbbf0/CMakeLists.txt" "${IMGUI_DIR}/CMakeLists.txt")
+    file(DOWNLOAD "https://gist.githubusercontent.com/rokups/f771217b2d530d170db5cb1e08e9a8f4/raw/CMakeLists.txt" "${IMGUI_DIR}/CMakeLists.txt")
 endif ()
 
 set(IMGUI_DISABLE_OBSOLETE_FUNCTIONS ON)
