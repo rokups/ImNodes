@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.1)
 project(ImNodes)
 
 set(CMAKE_CXX_STANDARD 14)
-set(IMNODES_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use for building sample,")
+set(IMNODES_IMGUI_VERSION "1.90.4" CACHE STRING "ImGui version to use for building sample,")
 
 if (NOT IMGUI_DIR)
     if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -48,7 +48,7 @@ if (NOT EXISTS "${IMGUI_DIR}/CMakeLists.txt")
 endif ()
 
 set(IMGUI_DISABLE_OBSOLETE_FUNCTIONS ON)
-add_subdirectory(${IMGUI_DIR})
+add_subdirectory(${IMGUI_DIR} EXCLUDE_FROM_ALL)
 
 # Warnings.
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
