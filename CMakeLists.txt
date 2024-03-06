@@ -48,7 +48,7 @@ if (NOT EXISTS "${IMGUI_DIR}/CMakeLists.txt")
 endif ()
 
 set(IMGUI_DISABLE_OBSOLETE_FUNCTIONS ON)
-add_subdirectory(${IMGUI_DIR})
+add_subdirectory(${IMGUI_DIR} EXCLUDE_FROM_ALL)
 
 # Warnings.
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
