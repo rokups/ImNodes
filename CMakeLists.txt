@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.1)
 project(ImNodes)
 
 set(CMAKE_CXX_STANDARD 14)
-set(IMNODES_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use for building sample,")
+set(IMNODES_IMGUI_VERSION "1.90.4" CACHE STRING "ImGui version to use for building sample,")
 
 if (NOT IMGUI_DIR)
     if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
