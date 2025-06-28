@@ -275,9 +275,12 @@ void BeginCanvas(CanvasState* canvas)
         draw_list->AddLine(ImVec2(0, y) + pos, ImVec2(size.x, y) + pos, grid_color);
         y += grid;
     }
-
+#if IMGUI_VERSION_NUM < 19200
     ImGui::SetWindowFontScale(canvas->Zoom);
-
+#else
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ImGui::PushFont(NULL, style.FontSizeBase * canvas->Zoom);
+#endif
     canvas->_Impl->PrevSelectCount = canvas->_Impl->CurrSelectCount;
     canvas->_Impl->CurrSelectCount = 0;
 }
@@ -398,7 +401,11 @@ void EndCanvas()
     // Clear this in preparation for the next frame.
     impl->PendingHoveredNodeId = 0;
 
+#if IMGUI_VERSION_NUM < 19200
     ImGui::SetWindowFontScale(1.f);
+#else
+    ImGui::PopFont();
+#endif
     ImGui::PopID();     // canvas
     gCanvas = impl->PrevCanvas;
 }
