@@ -219,12 +219,18 @@ void EndNode()
 
     // Render title bar background
     ImU32 node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeTitleBarBgActive : hovered ? ImNodesStyleCol_NodeTitleBarBgHovered : ImNodesStyleCol_NodeTitleBarBg);
+#if IMGUI_VERSION_NUM < 19300
     draw_list->AddRectFilled(node_rect.Min, titlebar_end, node_color, g.State.Style.NodeRounding, ImDrawFlags_RoundCornersTop);
-
+#else
+    draw_list->AddRectFilled(node_rect.Min, titlebar_end, node_color, g.State.Style.NodeRounding, ImDrawFlags_RoundTop);
+#endif
     // Render body background
     node_color = GetStyleColorU32(*g.NodeSelected ? ImNodesStyleCol_NodeBodyBgActive : hovered ? ImNodesStyleCol_NodeBodyBgHovered : ImNodesStyleCol_NodeBodyBg);
+#if IMGUI_VERSION_NUM < 19300
     draw_list->AddRectFilled(body_pos, node_rect.Max, node_color, g.State.Style.NodeRounding, ImDrawFlags_RoundCornersBottom);
-
+#else
+    draw_list->AddRectFilled(body_pos, node_rect.Max, node_color, g.State.Style.NodeRounding, ImDrawFlags_RoundBottom);
+#endif
     // Render outlines
     draw_list->AddRect(node_rect.Min, node_rect.Max, GetStyleColorU32(ImNodesStyleCol_NodeBorder), g.State.Style.NodeRounding);
     draw_list->AddLine(body_pos, titlebar_end, GetStyleColorU32(ImNodesStyleCol_NodeBorder));

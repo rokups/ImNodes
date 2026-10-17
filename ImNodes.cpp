@@ -36,8 +36,8 @@ CanvasState* gCanvas = nullptr;
 
 bool operator ==(const ImVec2& a, const ImVec2& b)
 {
-    return abs(a.x - b.x) < std::numeric_limits<float>::epsilon() &&
-           abs(a.y - b.y) < std::numeric_limits<float>::epsilon();
+    return fabs(a.x - b.x) < std::numeric_limits<float>::epsilon() &&
+           fabs(a.y - b.y) < std::numeric_limits<float>::epsilon();
 }
 
 enum _ImNodesState
@@ -206,8 +206,10 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
     ImVec2 p3 = output_pos + ImVec2{canvas->Style.CurveStrength * canvas->Zoom, 0};
 #if IMGUI_VERSION_NUM < 18000
     ImVec2 closest_pt = ImBezierClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationTol);
-#else
+#elif IMGUI_VERSION_NUM < 19292
     ImVec2 closest_pt = ImBezierCubicClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationTol);
+#else
+    ImVec2 closest_pt = ImBezierCubicClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationMaxError);
 #endif
     float min_square_distance = ImFabs(ImLengthSqr(ImGui::GetMousePos() - closest_pt));
     bool is_close = min_square_distance <= thickness * thickness;
@@ -275,9 +277,12 @@ void BeginCanvas(CanvasState* canvas)
         draw_list->AddLine(ImVec2(0, y) + pos, ImVec2(size.x, y) + pos, grid_color);
         y += grid;
     }
-
+#if IMGUI_VERSION_NUM < 19200
     ImGui::SetWindowFontScale(canvas->Zoom);
-
+#else
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ImGui::PushFont(NULL, style.FontSizeBase * canvas->Zoom);
+#endif
     canvas->_Impl->PrevSelectCount = canvas->_Impl->CurrSelectCount;
     canvas->_Impl->CurrSelectCount = 0;
 }
@@ -398,7 +403,11 @@ void EndCanvas()
     // Clear this in preparation for the next frame.
     impl->PendingHoveredNodeId = 0;
 
+#if IMGUI_VERSION_NUM < 19200
     ImGui::SetWindowFontScale(1.f);
+#else
+    ImGui::PopFont();
+#endif
     ImGui::PopID();     // canvas
     gCanvas = impl->PrevCanvas;
 }
